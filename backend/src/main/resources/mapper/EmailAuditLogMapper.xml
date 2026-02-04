@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.polaris.mapper.EmailAuditLogMapper">
+
+    <!-- 根据查询条件分页查询审计日志 -->
+    <select id="findByQuery" resultType="com.polaris.entity.EmailAuditLog">
+        SELECT * FROM email_audit_log
+        <where>
+            AND deleted = 0
+            <if test="recipient != null and recipient != ''">
+                AND recipient = #{recipient}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="emailType != null and emailType != ''">
+                AND email_type = #{emailType}
+            </if>
+            <if test="startDate != null">
+                AND created_at &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND created_at &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY created_at DESC
+    </select>
+
+</mapper>

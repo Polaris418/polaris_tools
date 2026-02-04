@@ -1,0 +1,179 @@
+spring:
+  application:
+    name: polaris-tools-backend
+  profiles:
+    active: dev
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:polaris}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000  # 默认缓存过期时间 10 分钟（毫秒）
+      cache-null-values: false  # 不缓存空值
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.polaris.entity
+  global-config:
+    db-config:
+      # 逻辑删除配置
+      logic-delete-field: deleted  # 全局逻辑删除字段名
+      logic-delete-value: 1        # 逻辑已删除值（默认为 1）
+      logic-not-delete-value: 0    # 逻辑未删除值（默认为 0）
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+
+jwt:
+  secret: ${JWT_SECRET:polaris-dev-secret-key-change-this-in-production-minimum-32-chars}
+  expiration: 86400000        # 24h (1 day)
+  refresh-expiration: 604800000 # 7d
+  remember-me-expiration: 2592000000 # 30d (30 days)
+
+logging:
+  level:
+    root: INFO
+    com.polaris: DEBUG
+
+# 邮件服务提供商配置
+email:
+  # 当前使用的邮件服务提供商: aws-ses 或 resend
+  provider: ${EMAIL_PROVIDER:resend}
+  # 邮件队列配置
+  queue:
+    # 是否启用邮件队列
+    enabled: ${EMAIL_QUEUE_ENABLED:true}
+    # Worker 线程数
+    worker-threads: ${EMAIL_QUEUE_WORKER_THREADS:5}
+    # 每次处理的批次大小
+    batch-size: ${EMAIL_QUEUE_BATCH_SIZE:10}
+  # 邮件监控配置
+  monitoring:
+    # 告警阈值配置
+    alert-threshold:
+      # 成功率阈值（低于此值触发告警）
+      success-rate: ${EMAIL_MONITORING_SUCCESS_RATE_THRESHOLD:0.95}
+      # 退信率阈值（超过此值触发告警）
+      bounce-rate: ${EMAIL_MONITORING_BOUNCE_RATE_THRESHOLD:0.05}
+      # 投诉率阈值（超过此值触发告警并暂停发送）
+      complaint-rate: ${EMAIL_MONITORING_COMPLAINT_RATE_THRESHOLD:0.001}
+    # 告警通知配置
+    alert:
+      # 是否启用邮件告警
+      email-enabled: ${EMAIL_ALERT_EMAIL_ENABLED:false}
+      # 告警邮件收件人（多个用逗号分隔）
+      email-recipients: ${EMAIL_ALERT_RECIPIENTS:}
+      # 是否启用 Webhook 告警
+      webhook-enabled: ${EMAIL_ALERT_WEBHOOK_ENABLED:false}
+      # Webhook URL
+      webhook-url: ${EMAIL_ALERT_WEBHOOK_URL:}
+
+# AWS SES 邮件配置
+aws:
+  ses:
+    # AWS 区域（例如: us-east-1, ap-southeast-1）
+    region: ${AWS_SES_REGION:ap-northeast-1}
+    # AWS 访问密钥 ID（建议使用环境变量或 IAM 角色）
+    access-key-id: ${AWS_ACCESS_KEY_ID:}
+    # AWS 秘密访问密钥（建议使用环境变量或 IAM 角色）
+    secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
+    # 发件人邮箱地址（向后兼容，如果未配置 senders，则使用此地址）
+    from-email: ${AWS_SES_FROM_EMAIL:noreply@polaristools.online}
+    # 是否启用邮件服务
+    enabled: ${AWS_SES_ENABLED:true}
+    # 配置集名称（用于事件跟踪，可选）
+    configuration-set-name: ${AWS_SES_CONFIG_SET:}
+    # 重试配置
+    retry:
+      # 最大重试次数
+      max-attempts: ${AWS_SES_RETRY_MAX_ATTEMPTS:3}
+      # 基础延迟时间（毫秒）
+      base-delay-millis: ${AWS_SES_RETRY_BASE_DELAY:1000}
+      # 最大延迟时间（毫秒）
+      max-delay-millis: ${AWS_SES_RETRY_MAX_DELAY:20000}
+    # 限流配置
+    rate-limit:
+      # 每秒最大邮件发送数
+      max-emails-per-second: ${AWS_SES_RATE_LIMIT_PER_SECOND:10}
+      # 每日最大邮件发送数
+      max-emails-per-day: ${AWS_SES_RATE_LIMIT_PER_DAY:50000}
+      # 同一邮箱地址验证/重置邮件冷却时间（秒）
+      email-cooldown-seconds: ${AWS_SES_EMAIL_COOLDOWN_SECONDS:60}
+      # 同一用户每日最多验证/重置邮件数
+      user-daily-limit: ${AWS_SES_USER_DAILY_LIMIT:5}
+      # 同一 IP 地址邮件请求冷却时间（秒）
+      ip-cooldown-seconds: ${AWS_SES_IP_COOLDOWN_SECONDS:60}
+      # 同一 IP 地址冷却时间内最多邮件请求数
+      ip-max-requests: ${AWS_SES_IP_MAX_REQUESTS:3}
+    # 多发件人地址配置
+    senders:
+      # 默认发件人地址（用于一般邮件、系统通知、营销邮件等）
+      noreply: ${AWS_SES_SENDER_NOREPLY:Polaris Tools <noreply@polaristools.online>}
+      # 客户支持发件人地址（用于客户支持、反馈等）
+      support: ${AWS_SES_SENDER_SUPPORT:Polaris Support <support@polaristools.online>}
+      # 安全通知发件人地址（用于密码重置、邮箱验证、账户安全等）
+      security: ${AWS_SES_SENDER_SECURITY:Polaris Security <security@polaristools.online>}
+      # 默认 Reply-To 地址（可选）
+      default-reply-to: ${AWS_SES_DEFAULT_REPLY_TO:}
+      # 客户支持 Reply-To 地址（可选）
+      support-reply-to: ${AWS_SES_SUPPORT_REPLY_TO:support@polaristools.online}
+
+# Resend 邮件配置
+resend:
+  # Resend API Key
+  api-key: ${RESEND_API_KEY:re_fHCbHwoC_NS3cgzfFXyMPa8kYVVPLVkpV}
+  # 发件人邮箱地址
+  from-email: ${RESEND_FROM_EMAIL:noreply@polaristools.online}
+  # 发件人名称
+  from-name: ${RESEND_FROM_NAME:Polaris Tools}
+  # Resend API 地址
+  api-url: ${RESEND_API_URL:https://api.resend.com}
+  # 是否启用 Resend
+  enabled: ${RESEND_ENABLED:true}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: alpha
+  show-actuator: false
+
+
+

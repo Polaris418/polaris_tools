@@ -1,0 +1,164 @@
+/* Polaris Tools - Global Styles */
+
+/* Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* Custom scrollbar styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Dark mode scrollbar */
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* ========================================
+   Custom Select/Dropdown Styles
+   ======================================== */
+
+/* Base select styling */
+select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%234b5563' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem !important;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+/* Dark mode select arrow - More visible */
+.dark select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23cbd5e1' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+}
+
+/* Select option styling - Light mode */
+select option {
+  background-color: #ffffff;
+  color: #1e293b;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+select option:checked {
+  background-color: #e0e7ff;
+  color: #4338ca;
+}
+
+select option:hover {
+  background-color: #f1f5f9;
+}
+
+/* Select option styling - Dark mode */
+.dark select option {
+  background-color: #1e293b;
+  color: #f1f5f9;
+}
+
+.dark select option:checked {
+  background-color: #312e81;
+  color: #a5b4fc;
+}
+
+.dark select option:hover {
+  background-color: #334155;
+}
+
+/* Disabled select styling */
+select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #f1f5f9;
+}
+
+.dark select:disabled {
+  background-color: #0f172a;
+}
+
+/* Focus state */
+select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  border-color: #6366f1 !important;
+}
+
+/* Hover state */
+select:hover:not(:disabled) {
+  border-color: #94a3b8;
+}
+
+.dark select:hover:not(:disabled) {
+  border-color: #64748b;
+}
+
+/* Admin panel specific select styles */
+.admin-select {
+  min-width: 140px;
+  height: 40px;
+  font-size: 14px;
+  font-weight: 500;
+}
