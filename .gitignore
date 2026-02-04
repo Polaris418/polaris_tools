@@ -1,3 +1,6 @@
+# Kiro IDE files
+.kiro/
+
 # Docs - 排除所有文档
 **/docs/
 **/doc/
