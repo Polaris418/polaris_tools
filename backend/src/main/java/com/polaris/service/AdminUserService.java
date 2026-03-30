@@ -2,10 +2,10 @@ package com.polaris.service;
 
 import com.polaris.common.base.BaseService;
 import com.polaris.common.result.PageResult;
-import com.polaris.dto.AdminUserCreateRequest;
-import com.polaris.dto.AdminUserQueryRequest;
-import com.polaris.dto.AdminUserResponse;
-import com.polaris.dto.AdminUserUpdateRequest;
+import com.polaris.dto.admin.AdminUserCreateRequest;
+import com.polaris.dto.admin.AdminUserQueryRequest;
+import com.polaris.dto.admin.AdminUserResponse;
+import com.polaris.dto.admin.AdminUserUpdateRequest;
 import com.polaris.entity.User;
 
 /**

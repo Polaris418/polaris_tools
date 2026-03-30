@@ -2,8 +2,8 @@ package com.polaris.controller;
 
 import com.polaris.common.result.PageResult;
 import com.polaris.common.result.Result;
-import com.polaris.dto.ToolResponse;
-import com.polaris.dto.ToolUsageResponse;
+import com.polaris.dto.tool.ToolResponse;
+import com.polaris.dto.tool.ToolUsageResponse;
 import com.polaris.service.UsageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

@@ -1,7 +1,7 @@
 package com.polaris.service.impl;
 
-import com.polaris.service.AlertHistoryService;
-import com.polaris.service.AlertNotificationService;
+import com.polaris.email.alert.AlertHistoryService;
+import com.polaris.email.alert.AlertNotificationService;
 import com.polaris.service.VerificationAlertService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

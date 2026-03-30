@@ -1,11 +1,11 @@
 package com.polaris.service;
 
 import com.polaris.common.base.BaseService;
-import com.polaris.dto.CategoryCreateRequest;
-import com.polaris.dto.CategoryQueryRequest;
-import com.polaris.dto.CategoryReorderRequest;
-import com.polaris.dto.CategoryResponse;
-import com.polaris.dto.CategoryUpdateRequest;
+import com.polaris.dto.category.CategoryCreateRequest;
+import com.polaris.dto.category.CategoryQueryRequest;
+import com.polaris.dto.category.CategoryReorderRequest;
+import com.polaris.dto.category.CategoryResponse;
+import com.polaris.dto.category.CategoryUpdateRequest;
 import com.polaris.entity.Category;
 
 import java.util.List;

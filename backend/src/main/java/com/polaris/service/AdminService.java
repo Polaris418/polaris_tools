@@ -1,6 +1,6 @@
 package com.polaris.service;
 
-import com.polaris.dto.DashboardStatsResponse;
+import com.polaris.common.dto.DashboardStatsResponse;
 
 /**
  * 管理员服务接口

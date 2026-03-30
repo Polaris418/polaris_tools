@@ -1,9 +1,9 @@
 package com.polaris.converter;
 
 import com.polaris.common.base.BaseConverter;
-import com.polaris.dto.DocumentCreateRequest;
-import com.polaris.dto.DocumentResponse;
-import com.polaris.dto.DocumentUpdateRequest;
+import com.polaris.dto.document.DocumentCreateRequest;
+import com.polaris.dto.document.DocumentResponse;
+import com.polaris.dto.document.DocumentUpdateRequest;
 import com.polaris.entity.UserDocument;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

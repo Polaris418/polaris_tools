@@ -1,10 +1,10 @@
 package com.polaris.service;
 
 import com.polaris.common.base.BaseService;
-import com.polaris.dto.ToolCreateRequest;
-import com.polaris.dto.ToolQueryRequest;
-import com.polaris.dto.ToolResponse;
-import com.polaris.dto.ToolUpdateRequest;
+import com.polaris.dto.tool.ToolCreateRequest;
+import com.polaris.dto.tool.ToolQueryRequest;
+import com.polaris.dto.tool.ToolResponse;
+import com.polaris.dto.tool.ToolUpdateRequest;
 import com.polaris.entity.Tool;
 import jakarta.servlet.http.HttpServletRequest;
 

@@ -3,7 +3,7 @@ package com.polaris.converter;
 import com.polaris.common.base.BaseConverter;
 import com.polaris.dto.subscription.SubscriptionPreferenceRequest;
 import com.polaris.dto.subscription.SubscriptionPreferenceResponse;
-import com.polaris.entity.EmailType;
+import com.polaris.email.entity.EmailType;
 import com.polaris.entity.UserEmailPreference;
 import org.springframework.stereotype.Component;
 

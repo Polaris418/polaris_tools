@@ -1,10 +1,10 @@
 package com.polaris.service;
 
 import com.polaris.common.base.BaseService;
-import com.polaris.dto.FolderCreateRequest;
-import com.polaris.dto.FolderQueryRequest;
-import com.polaris.dto.FolderResponse;
-import com.polaris.dto.FolderUpdateRequest;
+import com.polaris.dto.document.FolderCreateRequest;
+import com.polaris.dto.document.FolderQueryRequest;
+import com.polaris.dto.document.FolderResponse;
+import com.polaris.dto.document.FolderUpdateRequest;
 import com.polaris.entity.DocumentFolder;
 
 import java.util.List;

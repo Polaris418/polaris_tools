@@ -10,15 +10,16 @@ import com.polaris.common.exception.BusinessException;
 import com.polaris.common.exception.ErrorCode;
 import com.polaris.common.result.PageResult;
 import com.polaris.converter.CategoryConverter;
-import com.polaris.dto.CategoryCreateRequest;
-import com.polaris.dto.CategoryQueryRequest;
-import com.polaris.dto.CategoryResponse;
-import com.polaris.dto.CategoryUpdateRequest;
+import com.polaris.dto.category.CategoryCreateRequest;
+import com.polaris.dto.category.CategoryQueryRequest;
+import com.polaris.dto.category.CategoryReorderRequest;
+import com.polaris.dto.category.CategoryResponse;
+import com.polaris.dto.category.CategoryUpdateRequest;
 import com.polaris.entity.Category;
 import com.polaris.entity.Tool;
 import com.polaris.mapper.CategoryMapper;
 import com.polaris.mapper.ToolMapper;
-import com.polaris.security.UserContext;
+import com.polaris.auth.security.UserContext;
 import com.polaris.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -488,14 +489,14 @@ public class CategoryServiceImpl
     @Override
     @Transactional(rollbackFor = Exception.class)
     @org.springframework.cache.annotation.CacheEvict(value = "categories:list", allEntries = true)
-    public void reorderCategories(com.polaris.dto.CategoryReorderRequest request) {
+    public void reorderCategories(CategoryReorderRequest request) {
         Long adminId = userContext.getCurrentUserId();
         log.info("管理员批量更新分类排序开始: adminId={}, itemCount={}", adminId, request.getItems().size());
         
         try {
             java.time.LocalDateTime now = java.time.LocalDateTime.now();
             
-            for (com.polaris.dto.CategoryReorderRequest.ReorderItem item : request.getItems()) {
+            for (CategoryReorderRequest.ReorderItem item : request.getItems()) {
                 // 检查分类是否存在
                 Category category = categoryMapper.selectByIdIncludeDeleted(item.getId());
                 if (category == null) {

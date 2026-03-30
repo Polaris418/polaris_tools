@@ -2,9 +2,9 @@ package com.polaris.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.polaris.entity.EmailVerificationLog;
+import com.polaris.email.entity.EmailVerificationLog;
 import com.polaris.entity.VerificationPurpose;
-import com.polaris.mapper.EmailVerificationLogMapper;
+import com.polaris.email.mapper.EmailVerificationLogMapper;
 import com.polaris.service.VerificationLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

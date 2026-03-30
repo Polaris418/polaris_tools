@@ -1,10 +1,10 @@
 package com.polaris.service;
 
 import com.polaris.common.base.BaseService;
-import com.polaris.dto.DocumentCreateRequest;
-import com.polaris.dto.DocumentQueryRequest;
-import com.polaris.dto.DocumentResponse;
-import com.polaris.dto.DocumentUpdateRequest;
+import com.polaris.dto.document.DocumentCreateRequest;
+import com.polaris.dto.document.DocumentQueryRequest;
+import com.polaris.dto.document.DocumentResponse;
+import com.polaris.dto.document.DocumentUpdateRequest;
 import com.polaris.entity.UserDocument;
 
 import java.util.List;

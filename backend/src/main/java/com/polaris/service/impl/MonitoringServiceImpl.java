@@ -1,8 +1,8 @@
 package com.polaris.service.impl;
 
-import com.polaris.entity.EmailMetrics;
-import com.polaris.mapper.EmailMetricsMapper;
-import com.polaris.service.AlertRuleEngine;
+import com.polaris.email.entity.EmailMetrics;
+import com.polaris.email.mapper.EmailMetricsMapper;
+import com.polaris.email.alert.AlertRuleEngine;
 import com.polaris.service.MonitoringService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

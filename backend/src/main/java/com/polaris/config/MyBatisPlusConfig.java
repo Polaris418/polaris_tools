@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import java.time.LocalDateTime;
 
 @Configuration
-@MapperScan("com.polaris.mapper")
+@MapperScan({"com.polaris.mapper", "com.polaris.email.mapper", "com.polaris.ai.mapper"})
 public class MyBatisPlusConfig implements MetaObjectHandler {
 
     @Bean

@@ -1,8 +1,7 @@
 package com.polaris.security;
 
 import com.polaris.entity.VerificationPurpose;
-import com.polaris.service.RateLimiterService;
-import com.polaris.service.impl.RateLimiterServiceImpl;
+import com.polaris.auth.service.impl.RateLimiterServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,6 +9,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -24,6 +25,7 @@ import static org.mockito.Mockito.*;
  * 测试限流机制和防滥用保护
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("限流服务安全测试")
 public class RateLimiterSecurityTest {
 
@@ -55,14 +57,14 @@ public class RateLimiterSecurityTest {
         String cooldownKey = "rate_limit:email:cooldown:" + TEST_EMAIL + ":" + TEST_PURPOSE.name();
 
         // 第一次请求应该通过
-        when(valueOperations.get(cooldownKey)).thenReturn(null);
+        when(redisTemplate.hasKey(cooldownKey)).thenReturn(false);
         assertTrue(rateLimiterService.checkEmailRateLimit(TEST_EMAIL, TEST_PURPOSE),
                 "第一次请求应该通过");
 
         // 记录尝试后，冷却期内的请求应该被拒绝
         rateLimiterService.recordAttempt(TEST_EMAIL, TEST_PURPOSE, TEST_IP);
         
-        when(valueOperations.get(cooldownKey)).thenReturn(1);
+        when(redisTemplate.hasKey(cooldownKey)).thenReturn(true);
         assertFalse(rateLimiterService.checkEmailRateLimit(TEST_EMAIL, TEST_PURPOSE),
                 "冷却期内的请求应该被拒绝");
 
@@ -82,7 +84,7 @@ public class RateLimiterSecurityTest {
 
         // 模拟已发送9次
         when(valueOperations.get(dailyKey)).thenReturn(9);
-        when(valueOperations.get(cooldownKey)).thenReturn(null);
+        when(redisTemplate.hasKey(cooldownKey)).thenReturn(false);
 
         // 第10次应该通过
         assertTrue(rateLimiterService.checkEmailRateLimit(TEST_EMAIL, TEST_PURPOSE),
@@ -104,9 +106,11 @@ public class RateLimiterSecurityTest {
     @DisplayName("IP级限流 - 60秒冷却时间")
     void testIpRateLimit_CooldownPeriod() {
         String cooldownKey = "rate_limit:ip:cooldown:" + TEST_IP;
+        String dailyKey = "rate_limit:ip:daily:" + TEST_IP;
 
         // 前3次请求应该通过
-        when(valueOperations.get(cooldownKey)).thenReturn(null, 1, 2);
+        when(redisTemplate.hasKey(cooldownKey)).thenReturn(false, false, false, true);
+        when(valueOperations.get(dailyKey)).thenReturn(0);
         
         assertTrue(rateLimiterService.checkIpRateLimit(TEST_IP),
                 "第1次IP请求应该通过");
@@ -116,7 +120,6 @@ public class RateLimiterSecurityTest {
                 "第3次IP请求应该通过");
 
         // 第4次请求应该被拒绝
-        when(valueOperations.get(cooldownKey)).thenReturn(3);
         assertFalse(rateLimiterService.checkIpRateLimit(TEST_IP),
                 "第4次IP请求应该被拒绝");
     }
@@ -133,7 +136,7 @@ public class RateLimiterSecurityTest {
 
         // 模拟已发送19次
         when(valueOperations.get(dailyKey)).thenReturn(19);
-        when(valueOperations.get(cooldownKey)).thenReturn(null);
+        when(redisTemplate.hasKey(cooldownKey)).thenReturn(false);
 
         // 第20次应该通过
         assertTrue(rateLimiterService.checkIpRateLimit(TEST_IP),
@@ -154,10 +157,10 @@ public class RateLimiterSecurityTest {
     @Test
     @DisplayName("邮箱封禁机制 - 失败10次后封禁")
     void testEmailBlocking_AfterFailures() {
-        String blockKey = "rate_limit:email:blocked:" + TEST_EMAIL + ":" + TEST_PURPOSE.name();
+        String blockKey = "rate_limit:email:block:" + TEST_EMAIL + ":" + TEST_PURPOSE.name();
 
         // 未封禁时应该返回false
-        when(valueOperations.get(blockKey)).thenReturn(null);
+        when(redisTemplate.hasKey(blockKey)).thenReturn(false);
         assertFalse(rateLimiterService.isEmailBlocked(TEST_EMAIL, TEST_PURPOSE),
                 "未封禁的邮箱应该返回false");
 
@@ -168,7 +171,7 @@ public class RateLimiterSecurityTest {
         verify(valueOperations).set(eq(blockKey), eq(1), eq(60L), eq(TimeUnit.MINUTES));
 
         // 封禁后应该返回true
-        when(valueOperations.get(blockKey)).thenReturn(1);
+        when(redisTemplate.hasKey(blockKey)).thenReturn(true);
         assertTrue(rateLimiterService.isEmailBlocked(TEST_EMAIL, TEST_PURPOSE),
                 "封禁的邮箱应该返回true");
     }
@@ -203,7 +206,7 @@ public class RateLimiterSecurityTest {
     void testResetRateLimit() {
         String cooldownKey = "rate_limit:email:cooldown:" + TEST_EMAIL + ":" + TEST_PURPOSE.name();
         String dailyKey = "rate_limit:email:daily:" + TEST_EMAIL + ":" + TEST_PURPOSE.name();
-        String blockKey = "rate_limit:email:blocked:" + TEST_EMAIL + ":" + TEST_PURPOSE.name();
+        String blockKey = "rate_limit:email:block:" + TEST_EMAIL + ":" + TEST_PURPOSE.name();
 
         // 重置限流计数器
         rateLimiterService.resetEmailRateLimit(TEST_EMAIL, TEST_PURPOSE);
@@ -231,7 +234,7 @@ public class RateLimiterSecurityTest {
 
         // 验证设置了冷却期
         verify(valueOperations).set(eq(emailCooldownKey), eq(1), eq(60L), eq(TimeUnit.SECONDS));
-        verify(valueOperations).set(eq(ipCooldownKey), anyInt(), eq(60L), eq(TimeUnit.SECONDS));
+        verify(valueOperations).set(eq(ipCooldownKey), eq(1), eq(60L), eq(TimeUnit.SECONDS));
 
         // 验证增加了每日计数
         verify(valueOperations).increment(emailDailyKey);
@@ -248,13 +251,13 @@ public class RateLimiterSecurityTest {
         String cooldownKey = "rate_limit:email:cooldown:" + TEST_EMAIL + ":" + TEST_PURPOSE.name();
 
         // 模拟多个服务器实例同时检查限流
-        when(valueOperations.get(cooldownKey)).thenReturn(null);
+        when(redisTemplate.hasKey(cooldownKey)).thenReturn(false);
 
         // 第一个实例检查通过
         assertTrue(rateLimiterService.checkEmailRateLimit(TEST_EMAIL, TEST_PURPOSE));
 
         // 记录尝试后，其他实例应该看到限流
-        when(valueOperations.get(cooldownKey)).thenReturn(1);
+        when(redisTemplate.hasKey(cooldownKey)).thenReturn(true);
         assertFalse(rateLimiterService.checkEmailRateLimit(TEST_EMAIL, TEST_PURPOSE));
     }
 
@@ -266,9 +269,11 @@ public class RateLimiterSecurityTest {
     @DisplayName("恶意IP检测 - 大量请求")
     void testMaliciousIpDetection() {
         String ipCooldownKey = "rate_limit:ip:cooldown:" + TEST_IP;
+        String ipDailyKey = "rate_limit:ip:daily:" + TEST_IP;
 
         // 模拟短时间内的多次请求
-        when(valueOperations.get(ipCooldownKey)).thenReturn(null, 1, 2, 3);
+        when(redisTemplate.hasKey(ipCooldownKey)).thenReturn(false, false, false, true);
+        when(valueOperations.get(ipDailyKey)).thenReturn(0);
 
         // 前3次应该通过
         assertTrue(rateLimiterService.checkIpRateLimit(TEST_IP));
@@ -290,8 +295,8 @@ public class RateLimiterSecurityTest {
         String registerCooldownKey = "rate_limit:email:cooldown:" + TEST_EMAIL + ":" + VerificationPurpose.REGISTER.name();
 
         // 登录用途的限流
-        when(valueOperations.get(loginCooldownKey)).thenReturn(1);
-        when(valueOperations.get(registerCooldownKey)).thenReturn(null);
+        when(redisTemplate.hasKey(loginCooldownKey)).thenReturn(true);
+        when(redisTemplate.hasKey(registerCooldownKey)).thenReturn(false);
 
         // 登录用途被限流
         assertFalse(rateLimiterService.checkEmailRateLimit(TEST_EMAIL, VerificationPurpose.LOGIN));
@@ -308,7 +313,7 @@ public class RateLimiterSecurityTest {
     @DisplayName("Redis故障处理")
     void testRedisFailureHandling() {
         // 模拟Redis异常
-        when(valueOperations.get(anyString())).thenThrow(new RuntimeException("Redis connection failed"));
+        when(redisTemplate.hasKey(anyString())).thenThrow(new RuntimeException("Redis connection failed"));
 
         // 应该安全处理异常，不影响系统运行
         // 在实际实现中，可能会选择允许请求通过或拒绝请求

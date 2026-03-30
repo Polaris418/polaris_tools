@@ -1,9 +1,9 @@
 package com.polaris.converter;
 
 import com.polaris.common.base.BaseConverter;
-import com.polaris.dto.ToolCreateRequest;
-import com.polaris.dto.ToolResponse;
-import com.polaris.dto.ToolUpdateRequest;
+import com.polaris.dto.tool.ToolCreateRequest;
+import com.polaris.dto.tool.ToolResponse;
+import com.polaris.dto.tool.ToolUpdateRequest;
 import com.polaris.entity.Tool;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -27,6 +27,10 @@ public interface ToolConverter extends BaseConverter<Tool, ToolResponse, ToolCre
      * @return 工具响应 DTO
      */
     @Override
+    @Mapping(target = "ratingScore", ignore = true)
+    @Mapping(target = "ratingCount", ignore = true)
+    @Mapping(target = "reviewCount", ignore = true)
+    @Mapping(target = "isFavorited", ignore = true)
     @Mapping(target = "lastUsedAt", expression = "java(formatLastUsedAt(tool.getLastUsedAt()))")
     ToolResponse toResponse(Tool tool);
     
@@ -37,6 +41,16 @@ public interface ToolConverter extends BaseConverter<Tool, ToolResponse, ToolCre
      * @return 工具实体
      */
     @Override
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "viewCount", ignore = true)
+    @Mapping(target = "useCount", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "categoryName", ignore = true)
+    @Mapping(target = "categoryNameZh", ignore = true)
+    @Mapping(target = "lastUsedAt", ignore = true)
     Tool toEntity(ToolCreateRequest request);
     
     /**
@@ -47,6 +61,15 @@ public interface ToolConverter extends BaseConverter<Tool, ToolResponse, ToolCre
      * @param request 更新请求
      */
     @Override
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "viewCount", ignore = true)
+    @Mapping(target = "useCount", ignore = true)
+    @Mapping(target = "categoryName", ignore = true)
+    @Mapping(target = "categoryNameZh", ignore = true)
+    @Mapping(target = "lastUsedAt", ignore = true)
     void updateEntity(@MappingTarget Tool tool, ToolUpdateRequest request);
     
     /**

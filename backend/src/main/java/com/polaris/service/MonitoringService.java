@@ -1,6 +1,6 @@
 package com.polaris.service;
 
-import com.polaris.entity.EmailMetrics;
+import com.polaris.email.entity.EmailMetrics;
 
 import java.time.LocalDateTime;
 import java.util.List;

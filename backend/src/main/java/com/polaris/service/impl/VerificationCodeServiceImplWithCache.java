@@ -1,10 +1,11 @@
 package com.polaris.service.impl;
 
+import com.polaris.email.dto.SendEmailResponse;
 import com.polaris.dto.verification.SendVerificationCodeResponse;
-import com.polaris.entity.EmailVerificationCode;
+import com.polaris.email.entity.EmailVerificationCode;
 import com.polaris.entity.VerificationPurpose;
-import com.polaris.mapper.EmailVerificationCodeMapper;
-import com.polaris.service.EmailService;
+import com.polaris.email.mapper.EmailVerificationCodeMapper;
+import com.polaris.email.service.EmailService;
 import com.polaris.service.VerificationCodeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -78,41 +79,19 @@ public class VerificationCodeServiceImplWithCache implements VerificationCodeSer
             cacheVerificationCode(email, purpose, verificationCode);
             
             // 发送验证码邮件
-            try {
-                // 从邮箱中提取用户名（@ 之前的部分）
-                String username = email.substring(0, email.indexOf('@'));
-                
-                // 根据用途发送不同的验证码邮件
-                switch (purpose) {
-                    case CHANGE:
-                        // 密码修改验证码
-                        emailService.sendPasswordChangeCode(email, username, code, language);
-                        log.info("密码修改验证码邮件已发送: email={}, language={}", email, language);
-                        break;
-                    case LOGIN:
-                        // 登录验证码
-                        emailService.sendLoginCode(email, username, code, language);
-                        log.info("登录验证码邮件已发送: email={}, language={}", email, language);
-                        break;
-                    case RESET:
-                        // 密码重置验证码
-                        emailService.sendPasswordResetCode(email, username, code, language);
-                        log.info("密码重置验证码邮件已发送: email={}, language={}", email, language);
-                        break;
-                    case REGISTER:
-                    default:
-                        // 注册验证码（默认）
-                        emailService.sendEmailVerification(email, username, code);
-                        log.info("注册验证码邮件已发送: email={}", email);
-                        break;
-                }
-            } catch (Exception e) {
-                log.error("发送验证码邮件失败: email={}, purpose={}, error={}", 
-                        email, purpose, e.getMessage(), e);
-                // 邮件发送失败不影响验证码生成，用户可以稍后重试
+            SendEmailResponse emailResponse = sendVerificationEmail(email, code, purpose, language);
+            if (!emailResponse.isSuccess()) {
+                String message = emailResponse.getMessage() == null || emailResponse.getMessage().isBlank()
+                        ? "验证码发送失败，请稍后重试"
+                        : emailResponse.getMessage();
+                log.warn("验证码邮件发送失败: email={}, purpose={}, message={}", email, purpose, message);
+                return SendVerificationCodeResponse.builder()
+                        .success(false)
+                        .message(message)
+                        .build();
             }
-            
-            // 返回响应
+
+            log.info("验证码邮件已发送: email={}, purpose={}, language={}", email, purpose, language);
             return SendVerificationCodeResponse.builder()
                     .success(true)
                     .message("验证码已发送")
@@ -303,6 +282,29 @@ public class VerificationCodeServiceImplWithCache implements VerificationCodeSer
      */
     private String getCacheKey(String email, VerificationPurpose purpose) {
         return String.format(CACHE_KEY_PATTERN, email, purpose.name());
+    }
+
+    /**
+     * 根据验证码用途发送相应的验证码邮件
+     */
+    private SendEmailResponse sendVerificationEmail(String email, String code, VerificationPurpose purpose, String language) {
+        String username = email.substring(0, email.indexOf('@'));
+        String resolvedLanguage = (language == null || language.isBlank()) ? "zh-CN" : language;
+
+        try {
+            return switch (purpose) {
+                case CHANGE -> emailService.sendPasswordChangeCode(email, username, code, resolvedLanguage);
+                case LOGIN -> emailService.sendLoginCode(email, username, code, resolvedLanguage);
+                case RESET -> emailService.sendPasswordResetCode(email, username, code, resolvedLanguage);
+                case REGISTER, VERIFY -> emailService.sendEmailVerification(email, username, code);
+            };
+        } catch (Exception e) {
+            log.error("发送验证码邮件异常: email={}, purpose={}, error={}", email, purpose, e.getMessage(), e);
+            return SendEmailResponse.builder()
+                    .success(false)
+                    .message("发送验证码邮件异常: " + e.getMessage())
+                    .build();
+        }
     }
     
     /**

@@ -1,12 +1,12 @@
 package com.polaris.controller;
 
 import com.polaris.common.result.Result;
-import com.polaris.dto.ExportRequest;
-import com.polaris.dto.ExportResponse;
-import com.polaris.dto.ExportMarkdownRequest;
+import com.polaris.dto.document.ExportRequest;
+import com.polaris.dto.document.ExportResponse;
+import com.polaris.dto.document.ExportMarkdownRequest;
 import com.polaris.entity.UserDocument;
 import com.polaris.mapper.DocumentMapper;
-import com.polaris.security.UserContext;
+import com.polaris.auth.security.UserContext;
 import com.polaris.service.DocumentExportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

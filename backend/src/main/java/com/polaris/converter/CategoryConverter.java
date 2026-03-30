@@ -1,11 +1,12 @@
 package com.polaris.converter;
 
 import com.polaris.common.base.BaseConverter;
-import com.polaris.dto.CategoryCreateRequest;
-import com.polaris.dto.CategoryResponse;
-import com.polaris.dto.CategoryUpdateRequest;
+import com.polaris.dto.category.CategoryCreateRequest;
+import com.polaris.dto.category.CategoryResponse;
+import com.polaris.dto.category.CategoryUpdateRequest;
 import com.polaris.entity.Category;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
@@ -32,6 +33,12 @@ public interface CategoryConverter extends BaseConverter<Category, CategoryRespo
      * @return 分类实体
      */
     @Override
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "toolCount", ignore = true)
     Category toEntity(CategoryCreateRequest request);
     
     /**
@@ -42,5 +49,10 @@ public interface CategoryConverter extends BaseConverter<Category, CategoryRespo
      * @param request 更新请求
      */
     @Override
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "toolCount", ignore = true)
     void updateEntity(@MappingTarget Category category, CategoryUpdateRequest request);
 }

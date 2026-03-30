@@ -1,12 +1,12 @@
 package com.polaris.controller;
 
 import com.polaris.common.result.Result;
-import com.polaris.converter.EmailMetricsConverter;
-import com.polaris.dto.email.EmailMetricsResponse;
-import com.polaris.dto.email.MonitoringDashboardResponse;
-import com.polaris.entity.EmailMetrics;
-import com.polaris.security.RequireAdmin;
-import com.polaris.service.AlertRuleEngine;
+import com.polaris.email.converter.EmailMetricsConverter;
+import com.polaris.email.dto.EmailMetricsResponse;
+import com.polaris.email.dto.MonitoringDashboardResponse;
+import com.polaris.email.entity.EmailMetrics;
+import com.polaris.auth.security.RequireAdmin;
+import com.polaris.email.alert.AlertRuleEngine;
 import com.polaris.service.MonitoringService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

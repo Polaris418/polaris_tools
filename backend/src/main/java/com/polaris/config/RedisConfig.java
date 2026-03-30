@@ -5,8 +5,11 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
@@ -25,7 +28,11 @@ import java.time.Duration;
  */
 @Configuration
 @EnableCaching
+@Slf4j
 public class RedisConfig {
+
+    @Value("${spring.cache.type:redis}")
+    private String cacheType;
 
     /**
      * 配置 RedisTemplate
@@ -67,6 +74,11 @@ public class RedisConfig {
      */
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+        if (!"redis".equalsIgnoreCase(cacheType)) {
+            log.warn("当前缓存模式为 {}，回退到 ConcurrentMapCacheManager", cacheType);
+            return new ConcurrentMapCacheManager("categories:list", "favorites:list");
+        }
+
         // 使用 Jackson2JsonRedisSerializer 来序列化和反序列化 redis 的 value 值
         ObjectMapper mapper = new ObjectMapper();
         mapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);

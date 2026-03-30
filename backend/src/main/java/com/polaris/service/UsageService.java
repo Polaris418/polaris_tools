@@ -2,11 +2,11 @@ package com.polaris.service;
 
 import com.polaris.common.base.BaseService;
 import com.polaris.common.result.PageResult;
-import com.polaris.dto.ToolResponse;
-import com.polaris.dto.ToolUsageCreateRequest;
-import com.polaris.dto.ToolUsageQueryRequest;
-import com.polaris.dto.ToolUsageResponse;
-import com.polaris.dto.ToolUsageUpdateRequest;
+import com.polaris.dto.tool.ToolResponse;
+import com.polaris.dto.tool.ToolUsageCreateRequest;
+import com.polaris.dto.tool.ToolUsageQueryRequest;
+import com.polaris.dto.tool.ToolUsageResponse;
+import com.polaris.dto.tool.ToolUsageUpdateRequest;
 import com.polaris.entity.ToolUsage;
 
 import java.util.List;

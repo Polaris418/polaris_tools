@@ -1,9 +1,9 @@
 package com.polaris.converter;
 
 import com.polaris.common.base.BaseConverter;
-import com.polaris.dto.NotificationCreateRequest;
-import com.polaris.dto.NotificationResponse;
-import com.polaris.dto.NotificationUpdateRequest;
+import com.polaris.dto.notification.NotificationCreateRequest;
+import com.polaris.dto.notification.NotificationResponse;
+import com.polaris.dto.notification.NotificationUpdateRequest;
 import com.polaris.entity.Notification;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

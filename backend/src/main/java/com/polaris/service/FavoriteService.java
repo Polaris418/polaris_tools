@@ -1,10 +1,10 @@
 package com.polaris.service;
 
 import com.polaris.common.base.BaseService;
-import com.polaris.dto.FavoriteCreateRequest;
-import com.polaris.dto.FavoriteQueryRequest;
-import com.polaris.dto.FavoriteResponse;
-import com.polaris.dto.ToolResponse;
+import com.polaris.dto.favorite.FavoriteCreateRequest;
+import com.polaris.dto.favorite.FavoriteQueryRequest;
+import com.polaris.dto.favorite.FavoriteResponse;
+import com.polaris.dto.tool.ToolResponse;
 import com.polaris.entity.UserFavorite;
 
 import java.util.List;

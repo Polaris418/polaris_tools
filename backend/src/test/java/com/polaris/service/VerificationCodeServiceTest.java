@@ -1,8 +1,9 @@
 package com.polaris.service;
 
-import com.polaris.entity.EmailVerificationCode;
+import com.polaris.email.entity.EmailVerificationCode;
 import com.polaris.entity.VerificationPurpose;
-import com.polaris.mapper.EmailVerificationCodeMapper;
+import com.polaris.email.mapper.EmailVerificationCodeMapper;
+import com.polaris.email.service.EmailService;
 import com.polaris.service.impl.VerificationCodeServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,9 @@ class VerificationCodeServiceTest {
     
     @Mock
     private EmailService emailService;
+
+    @Mock
+    private VerificationLogService verificationLogService;
     
     @InjectMocks
     private VerificationCodeServiceImpl verificationCodeService;

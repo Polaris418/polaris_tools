@@ -1,10 +1,10 @@
 package com.polaris.service;
 
 import com.polaris.common.base.BaseService;
-import com.polaris.dto.VersionCreateRequest;
-import com.polaris.dto.VersionQueryRequest;
-import com.polaris.dto.VersionResponse;
-import com.polaris.dto.VersionUpdateRequest;
+import com.polaris.dto.document.VersionCreateRequest;
+import com.polaris.dto.document.VersionQueryRequest;
+import com.polaris.dto.document.VersionResponse;
+import com.polaris.dto.document.VersionUpdateRequest;
 import com.polaris.entity.DocumentVersion;
 
 import java.util.List;

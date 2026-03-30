@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.polaris.mapper.EmailSuppressionMapper">
+<mapper namespace="com.polaris.email.mapper.EmailSuppressionMapper">
     
     <!-- 根据邮箱地址查询抑制记录 -->
-    <select id="findByEmail" resultType="com.polaris.entity.EmailSuppression">
+    <select id="findByEmail" resultType="com.polaris.email.entity.EmailSuppression">
         SELECT *
         FROM email_suppression
         WHERE email = #{email}

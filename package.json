@@ -1,0 +1,12 @@
+{
+  "name": "polaris-tool-workspace",
+  "private": true,
+  "scripts": {
+    "dev:frontend": "npm --prefix polaris-tools run dev",
+    "dev:backend": "mvn -f backend/pom.xml spring-boot:run",
+    "build:frontend": "npm --prefix polaris-tools run build",
+    "build:backend": "mvn -f backend/pom.xml clean package -DskipTests",
+    "test:frontend": "npm --prefix polaris-tools run test:run",
+    "test:backend": "mvn -f backend/pom.xml test"
+  }
+}

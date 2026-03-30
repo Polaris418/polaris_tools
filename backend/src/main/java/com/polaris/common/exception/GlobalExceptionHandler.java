@@ -2,6 +2,7 @@ package com.polaris.common.exception;
 
 import com.polaris.common.result.Result;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -20,10 +21,12 @@ public class GlobalExceptionHandler {
      * 根据错误码返回相应的HTTP状态码
      */
     @ExceptionHandler(BusinessException.class)
-    public Result<?> handleBusinessException(BusinessException e) {
+    public ResponseEntity<Result<?>> handleBusinessException(BusinessException e) {
         log.warn("业务异常: code={}, message={}", e.getCode(), e.getMessage());
-        
-        return Result.error(e.getCode(), e.getMessage());
+
+        HttpStatus status = getHttpStatusFromErrorCode(e.getCode());
+        return ResponseEntity.status(status)
+                .body(Result.error(e.getCode(), e.getMessage()));
     }
 
     /**
@@ -97,55 +100,73 @@ public class GlobalExceptionHandler {
     /**
      * 根据错误码获取HTTP状态码
      */
-    private int getHttpStatusFromErrorCode(Integer errorCode) {
+    private HttpStatus getHttpStatusFromErrorCode(Integer errorCode) {
         if (errorCode == null) {
-            return HttpStatus.INTERNAL_SERVER_ERROR.value();
+            return HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+
+        if (errorCode >= 400 && errorCode < 600) {
+            return HttpStatus.valueOf(errorCode);
         }
         
         // 2xxx 用户相关错误
         if (errorCode >= 2000 && errorCode < 3000) {
-            if (errorCode == 2001) return HttpStatus.NOT_FOUND.value(); // USER_NOT_FOUND
-            if (errorCode == 2002 || errorCode == 2003) return HttpStatus.CONFLICT.value(); // EXISTS
-            if (errorCode == 2004) return HttpStatus.UNAUTHORIZED.value(); // INVALID_CREDENTIALS
-            if (errorCode == 2005 || errorCode == 2006) return HttpStatus.UNAUTHORIZED.value(); // TOKEN
-            if (errorCode == 2007) return HttpStatus.FORBIDDEN.value(); // USER_DISABLED
-            if (errorCode == 2008) return HttpStatus.BAD_REQUEST.value(); // CANNOT_DELETE_SELF
-            return HttpStatus.BAD_REQUEST.value();
+            if (errorCode == 2001) return HttpStatus.NOT_FOUND; // USER_NOT_FOUND
+            if (errorCode == 2002 || errorCode == 2003) return HttpStatus.CONFLICT; // EXISTS
+            if (errorCode == 2004) return HttpStatus.UNAUTHORIZED; // INVALID_CREDENTIALS
+            if (errorCode == 2005 || errorCode == 2006) return HttpStatus.UNAUTHORIZED; // TOKEN
+            if (errorCode == 2007) return HttpStatus.FORBIDDEN; // USER_DISABLED
+            if (errorCode == 2008) return HttpStatus.BAD_REQUEST; // CANNOT_DELETE_SELF
+            return HttpStatus.BAD_REQUEST;
         }
         
         // 3xxx 工具相关错误
         if (errorCode >= 3000 && errorCode < 4000) {
-            if (errorCode == 3001) return HttpStatus.NOT_FOUND.value(); // TOOL_NOT_FOUND
-            if (errorCode == 3002) return HttpStatus.CONFLICT.value(); // TOOL_NAME_EXISTS
-            return HttpStatus.BAD_REQUEST.value();
+            if (errorCode == 3001) return HttpStatus.NOT_FOUND; // TOOL_NOT_FOUND
+            if (errorCode == 3002) return HttpStatus.CONFLICT; // TOOL_NAME_EXISTS
+            return HttpStatus.BAD_REQUEST;
         }
         
         // 4xxx 分类相关错误
         if (errorCode >= 4000 && errorCode < 5000) {
-            if (errorCode == 4001) return HttpStatus.NOT_FOUND.value(); // CATEGORY_NOT_FOUND
-            if (errorCode == 4002) return HttpStatus.CONFLICT.value(); // CATEGORY_NAME_EXISTS
-            if (errorCode == 4003) return HttpStatus.BAD_REQUEST.value(); // CATEGORY_HAS_TOOLS
-            return HttpStatus.BAD_REQUEST.value();
+            if (errorCode == 4001) return HttpStatus.NOT_FOUND; // CATEGORY_NOT_FOUND
+            if (errorCode == 4002) return HttpStatus.CONFLICT; // CATEGORY_NAME_EXISTS
+            if (errorCode == 4003) return HttpStatus.BAD_REQUEST; // CATEGORY_HAS_TOOLS
+            return HttpStatus.BAD_REQUEST;
         }
         
         // 5xxx 收藏相关错误
         if (errorCode >= 5000 && errorCode < 6000) {
-            if (errorCode == 5002) return HttpStatus.NOT_FOUND.value(); // FAVORITE_NOT_FOUND
-            return HttpStatus.BAD_REQUEST.value();
+            if (errorCode == 5002) return HttpStatus.NOT_FOUND; // FAVORITE_NOT_FOUND
+            return HttpStatus.BAD_REQUEST;
         }
         
         // 6xxx 参数验证错误
         if (errorCode >= 6000 && errorCode < 7000) {
-            return HttpStatus.BAD_REQUEST.value();
+            return HttpStatus.BAD_REQUEST;
         }
         
         // 7xxx 文档相关错误
         if (errorCode >= 7000 && errorCode < 8000) {
-            if (errorCode == 7001 || errorCode == 7002) return HttpStatus.NOT_FOUND.value();
-            return HttpStatus.BAD_REQUEST.value();
+            if (errorCode == 7001 || errorCode == 7002) return HttpStatus.NOT_FOUND;
+            return HttpStatus.BAD_REQUEST;
+        }
+
+        // 8xxx 验证码与限流相关错误
+        if (errorCode >= 8000 && errorCode < 9000) {
+            if (errorCode == 8006 || errorCode == 8007 || errorCode == 8008) return HttpStatus.TOO_MANY_REQUESTS;
+            if (errorCode == 8009) return HttpStatus.FORBIDDEN;
+            return HttpStatus.BAD_REQUEST;
+        }
+
+        // 9xxx AI 相关错误
+        if (errorCode >= 9000 && errorCode < 10000) {
+            if (errorCode == 9001) return HttpStatus.TOO_MANY_REQUESTS;
+            if (errorCode == 9002 || errorCode == 9003) return HttpStatus.BAD_GATEWAY;
+            return HttpStatus.BAD_REQUEST;
         }
         
         // 默认返回 500
-        return HttpStatus.INTERNAL_SERVER_ERROR.value();
+        return HttpStatus.INTERNAL_SERVER_ERROR;
     }
 }

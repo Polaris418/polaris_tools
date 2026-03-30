@@ -1,6 +1,6 @@
 package com.polaris.service.impl;
 
-import com.polaris.dto.DashboardStatsResponse;
+import com.polaris.common.dto.DashboardStatsResponse;
 import com.polaris.mapper.CategoryMapper;
 import com.polaris.mapper.ToolMapper;
 import com.polaris.mapper.ToolUsageMapper;

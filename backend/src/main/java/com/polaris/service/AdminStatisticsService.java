@@ -1,7 +1,7 @@
 package com.polaris.service;
 
-import com.polaris.dto.PopularToolData;
-import com.polaris.dto.TrendDataPoint;
+import com.polaris.common.dto.PopularToolData;
+import com.polaris.common.dto.TrendDataPoint;
 
 import java.util.List;
 

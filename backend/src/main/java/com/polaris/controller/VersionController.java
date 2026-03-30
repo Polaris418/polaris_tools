@@ -1,7 +1,7 @@
 package com.polaris.controller;
 
 import com.polaris.common.result.Result;
-import com.polaris.dto.VersionResponse;
+import com.polaris.dto.document.VersionResponse;
 import com.polaris.service.VersionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

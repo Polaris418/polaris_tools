@@ -1,20 +1,73 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Polaris Tools Frontend
 
-# Run and deploy your AI Studio app
+前端基于 React 19 + TypeScript + Vite。
 
-This contains everything you need to run your app locally.
+## 环境要求
 
-View your app in AI Studio: https://ai.studio/apps/drive/1aVIrrWjTr6ikqIpmWq5IcT8KZGpyt3zw
+- Node.js 18+
+- npm
 
-## Run Locally
+## 启动步骤
 
-**Prerequisites:**  Node.js
+```bash
+cd polaris-tools
+cp .env.local.example .env.local
+npm install
+npm run dev
+```
 
+本地开发默认地址：`http://localhost:3000`
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+说明：
+
+- `npm run dev` 使用 `vite.config.ts` 中配置的 Vite 开发端口 `3000`
+- 如果通过仓库根目录的 `docker compose up --build -d` 启动，宿主机访问地址仍是 `http://localhost:5173`
+
+## 环境变量
+
+`polaris-tools/.env.local.example`：
+
+- `VITE_API_BASE_URL`：后端地址，建议 `http://localhost:8080`
+- `GEMINI_API_KEY`：可选，AI 功能使用
+
+注意：
+
+- `VITE_API_BASE_URL` 不要带 `/api/v1`
+- API 客户端会在请求中自行拼接接口前缀
+
+## 常用命令
+
+```bash
+npm run dev
+npm run build
+npm run preview
+npm run test
+npm run test:run
+npm run test:ui
+npm run generate:api
+```
+
+## API 类型生成
+
+后端启动后可生成 OpenAPI 类型文件：
+
+```bash
+npm run generate:api
+```
+
+输出文件：`polaris-tools/types/api-generated.ts`
+
+## 主要目录
+
+```text
+polaris-tools/
+├── api/
+├── components/
+├── context/
+├── hooks/
+├── i18n/
+├── pages/
+├── tests/
+├── tools/
+└── utils/
+```

@@ -56,4 +56,32 @@ public class AsyncConfig implements AsyncConfigurer {
         
         return executor;
     }
+
+    /**
+     * 邮件异步任务执行器
+     * 用于邮件发送等高频异步任务
+     *
+     * @return 邮件线程池
+     */
+    @Bean(name = "emailTaskExecutor")
+    public Executor emailTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("email-async-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setKeepAliveSeconds(60);
+        executor.setAllowCoreThreadTimeOut(true);
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(60);
+
+        executor.initialize();
+
+        log.info("Email async executor initialized with core pool size: {}, max pool size: {}",
+                executor.getCorePoolSize(), executor.getMaxPoolSize());
+
+        return executor;
+    }
 }

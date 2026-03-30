@@ -2,11 +2,11 @@ package com.polaris.controller;
 
 import com.polaris.common.result.PageResult;
 import com.polaris.common.result.Result;
-import com.polaris.dto.NotificationCreateRequest;
-import com.polaris.dto.NotificationQueryRequest;
-import com.polaris.dto.NotificationResponse;
-import com.polaris.dto.NotificationUpdateRequest;
-import com.polaris.security.RequireAdmin;
+import com.polaris.dto.notification.NotificationCreateRequest;
+import com.polaris.dto.notification.NotificationQueryRequest;
+import com.polaris.dto.notification.NotificationResponse;
+import com.polaris.dto.notification.NotificationUpdateRequest;
+import com.polaris.auth.security.RequireAdmin;
 import com.polaris.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

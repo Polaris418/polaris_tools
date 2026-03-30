@@ -1,0 +1,83 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: polaris-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: polaris
+      MYSQL_ROOT_HOST: "%"
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: polaris-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: polaris-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: polaris
+      DB_USERNAME: root
+      DB_PASSWORD: 123456
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: change-this-to-a-strong-local-dev-secret-32chars
+      FLYWAY_LOCATIONS: filesystem:db/migration
+      RESEND_API_KEY: local-dev-placeholder-key
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend/db/migration:/app/db/migration:ro
+
+  frontend:
+    build:
+      context: ./polaris-tools
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8080
+    container_name: polaris-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  mysql_data:
+  redis_data:

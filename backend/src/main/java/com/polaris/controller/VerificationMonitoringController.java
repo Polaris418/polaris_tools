@@ -3,8 +3,8 @@ package com.polaris.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.polaris.common.result.Result;
-import com.polaris.entity.EmailVerificationLog;
-import com.polaris.security.RequireAdmin;
+import com.polaris.email.entity.EmailVerificationLog;
+import com.polaris.auth.security.RequireAdmin;
 import com.polaris.service.VerificationLogService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,7 +15,6 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 

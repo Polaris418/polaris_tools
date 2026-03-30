@@ -2,8 +2,31 @@ package com.polaris.controller;
 
 import com.polaris.common.result.PageResult;
 import com.polaris.common.result.Result;
-import com.polaris.dto.*;
-import com.polaris.security.RequireAdmin;
+import com.polaris.common.dto.DashboardStatsResponse;
+import com.polaris.common.dto.PopularToolData;
+import com.polaris.common.dto.TrendDataPoint;
+import com.polaris.dto.admin.AdminUserCreateRequest;
+import com.polaris.dto.admin.AdminUserQueryRequest;
+import com.polaris.dto.admin.AdminUserResponse;
+import com.polaris.dto.admin.AdminUserUpdateRequest;
+import com.polaris.dto.category.CategoryCreateRequest;
+import com.polaris.dto.category.CategoryQueryRequest;
+import com.polaris.dto.category.CategoryReorderRequest;
+import com.polaris.dto.category.CategoryResponse;
+import com.polaris.dto.category.CategoryUpdateRequest;
+import com.polaris.dto.tool.ToolCreateRequest;
+import com.polaris.dto.tool.ToolQueryRequest;
+import com.polaris.dto.tool.ToolResponse;
+import com.polaris.dto.tool.ToolUpdateRequest;
+import com.polaris.dto.user.UserStatusRequest;
+import com.polaris.auth.security.RequireAdmin;
+import com.polaris.email.dto.EmailAuditLogQueryRequest;
+import com.polaris.email.dto.EmailAuditLogResponse;
+import com.polaris.email.dto.EmailStatisticsResponse;
+import com.polaris.email.dto.RateLimitStatsResponse;
+import com.polaris.email.dto.ResetRateLimitRequest;
+import com.polaris.email.service.EmailAuditService;
+import com.polaris.email.service.EmailRateLimiter;
 import com.polaris.service.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -41,7 +64,7 @@ public class AdminController {
     private final AdminStatisticsService adminStatisticsService;
     private final ToolService toolService;
     private final CategoryService categoryService;
-    private final EmailAuditLogService emailAuditLogService;
+    private final EmailAuditService emailAuditLogService;
     private final EmailRateLimiter emailRateLimiter;
     
     // ==================== Dashboard Statistics ====================
@@ -591,10 +614,10 @@ public class AdminController {
             content = @Content(schema = @Schema(implementation = Result.class))
         )
     })
-    public Result<PageResult<com.polaris.dto.email.EmailAuditLogResponse>> listEmailLogs(
-            @Parameter(description = "邮件日志查询请求参数") @Valid com.polaris.dto.email.EmailAuditLogQueryRequest request) {
+    public Result<PageResult<EmailAuditLogResponse>> listEmailLogs(
+            @Parameter(description = "邮件日志查询请求参数") @Valid EmailAuditLogQueryRequest request) {
         log.info("管理员查询邮件审计日志: {}", request);
-        PageResult<com.polaris.dto.email.EmailAuditLogResponse> result = emailAuditLogService.list(request);
+        PageResult<EmailAuditLogResponse> result = emailAuditLogService.list(request);
         return Result.success(result);
     }
     
@@ -611,7 +634,7 @@ public class AdminController {
         @ApiResponse(
             responseCode = "200",
             description = "成功获取邮件日志详情",
-            content = @Content(schema = @Schema(implementation = com.polaris.dto.email.EmailAuditLogResponse.class))
+            content = @Content(schema = @Schema(implementation = EmailAuditLogResponse.class))
         ),
         @ApiResponse(
             responseCode = "404",
@@ -619,10 +642,10 @@ public class AdminController {
             content = @Content(schema = @Schema(implementation = Result.class))
         )
     })
-    public Result<com.polaris.dto.email.EmailAuditLogResponse> getEmailLog(
+    public Result<EmailAuditLogResponse> getEmailLog(
             @Parameter(description = "日志ID", required = true) @PathVariable Long id) {
         log.info("管理员查询邮件日志详情: logId={}", id);
-        com.polaris.dto.email.EmailAuditLogResponse emailLog = emailAuditLogService.getById(id);
+        EmailAuditLogResponse emailLog = emailAuditLogService.getById(id);
         return Result.success(emailLog);
     }
     
@@ -639,12 +662,12 @@ public class AdminController {
         @ApiResponse(
             responseCode = "200",
             description = "成功获取邮件统计信息",
-            content = @Content(schema = @Schema(implementation = com.polaris.dto.email.EmailStatisticsResponse.class))
+            content = @Content(schema = @Schema(implementation = EmailStatisticsResponse.class))
         )
     })
-    public Result<com.polaris.dto.email.EmailStatisticsResponse> getEmailStatistics() {
+    public Result<EmailStatisticsResponse> getEmailStatistics() {
         log.info("管理员查询邮件统计信息");
-        com.polaris.dto.email.EmailStatisticsResponse statistics = emailAuditLogService.getEmailStatistics();
+        EmailStatisticsResponse statistics = emailAuditLogService.getEmailStatistics();
         return Result.success(statistics);
     }
     
@@ -690,17 +713,17 @@ public class AdminController {
         @ApiResponse(
             responseCode = "200",
             description = "成功获取限流状态",
-            content = @Content(schema = @Schema(implementation = com.polaris.dto.email.RateLimitStatsResponse.class))
+            content = @Content(schema = @Schema(implementation = RateLimitStatsResponse.class))
         )
     })
-    public Result<com.polaris.dto.email.RateLimitStatsResponse> getEmailRateLimitStats(
+    public Result<RateLimitStatsResponse> getEmailRateLimitStats(
             @Parameter(description = "邮箱地址", required = true) @PathVariable String email) {
         log.info("管理员查询邮箱级限流状态: email={}", email);
         
         long remainingSeconds = emailRateLimiter.getEmailRateLimitRemaining(email);
         boolean limited = remainingSeconds > 0;
         
-        com.polaris.dto.email.RateLimitStatsResponse stats = com.polaris.dto.email.RateLimitStatsResponse.builder()
+        RateLimitStatsResponse stats = RateLimitStatsResponse.builder()
                 .email(email)
                 .limitType("email")
                 .limited(limited)
@@ -725,10 +748,10 @@ public class AdminController {
         @ApiResponse(
             responseCode = "200",
             description = "成功获取限流状态",
-            content = @Content(schema = @Schema(implementation = com.polaris.dto.email.RateLimitStatsResponse.class))
+            content = @Content(schema = @Schema(implementation = RateLimitStatsResponse.class))
         )
     })
-    public Result<com.polaris.dto.email.RateLimitStatsResponse> getUserRateLimitStats(
+    public Result<RateLimitStatsResponse> getUserRateLimitStats(
             @Parameter(description = "用户ID", required = true) @PathVariable Long userId) {
         log.info("管理员查询用户级限流状态: userId={}", userId);
         
@@ -736,7 +759,7 @@ public class AdminController {
         int maxLimit = 5; // From config
         boolean limited = usageCount >= maxLimit;
         
-        com.polaris.dto.email.RateLimitStatsResponse stats = com.polaris.dto.email.RateLimitStatsResponse.builder()
+        RateLimitStatsResponse stats = RateLimitStatsResponse.builder()
                 .userId(userId)
                 .limitType("user")
                 .limited(limited)
@@ -760,10 +783,10 @@ public class AdminController {
         @ApiResponse(
             responseCode = "200",
             description = "成功获取限流状态",
-            content = @Content(schema = @Schema(implementation = com.polaris.dto.email.RateLimitStatsResponse.class))
+            content = @Content(schema = @Schema(implementation = RateLimitStatsResponse.class))
         )
     })
-    public Result<com.polaris.dto.email.RateLimitStatsResponse> getIpRateLimitStats(
+    public Result<RateLimitStatsResponse> getIpRateLimitStats(
             @Parameter(description = "IP 地址", required = true) @PathVariable String ipAddress) {
         log.info("管理员查询 IP 级限流状态: ip={}", ipAddress);
         
@@ -771,7 +794,7 @@ public class AdminController {
         int maxLimit = 3; // From config
         boolean limited = usageCount >= maxLimit;
         
-        com.polaris.dto.email.RateLimitStatsResponse stats = com.polaris.dto.email.RateLimitStatsResponse.builder()
+        RateLimitStatsResponse stats = RateLimitStatsResponse.builder()
                 .ipAddress(ipAddress)
                 .limitType("ip")
                 .limited(limited)
@@ -804,7 +827,7 @@ public class AdminController {
     })
     public Result<Map<String, Object>> resetRateLimit(
             @Parameter(description = "重置限流请求", required = true) 
-            @Valid @RequestBody com.polaris.dto.email.ResetRateLimitRequest request) {
+            @Valid @RequestBody ResetRateLimitRequest request) {
         log.info("管理员重置限流计数器: {}", request);
         
         String message;

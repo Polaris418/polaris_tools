@@ -1,6 +1,6 @@
 package com.polaris.service;
 
-import com.polaris.entity.EmailType;
+import com.polaris.email.entity.EmailType;
 import com.polaris.entity.UserEmailPreference;
 
 import java.util.List;

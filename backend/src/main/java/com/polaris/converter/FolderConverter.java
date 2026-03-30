@@ -1,8 +1,8 @@
 package com.polaris.converter;
 
-import com.polaris.dto.FolderCreateRequest;
-import com.polaris.dto.FolderResponse;
-import com.polaris.dto.FolderUpdateRequest;
+import com.polaris.dto.document.FolderCreateRequest;
+import com.polaris.dto.document.FolderResponse;
+import com.polaris.dto.document.FolderUpdateRequest;
 import com.polaris.entity.DocumentFolder;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -23,6 +23,7 @@ public interface FolderConverter {
      * @return 文件夹响应 DTO
      */
     @Mapping(target = "documentCount", ignore = true)
+    @Mapping(target = "children", ignore = true)
     FolderResponse toFolderResponse(DocumentFolder folder);
     
     /**
@@ -35,6 +36,8 @@ public interface FolderConverter {
     @Mapping(target = "userId", ignore = true)
     @Mapping(target = "sortOrder", constant = "0")
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
     DocumentFolder toDocumentFolder(FolderCreateRequest request);
     
     /**
@@ -47,5 +50,7 @@ public interface FolderConverter {
     @Mapping(target = "userId", ignore = true)
     @Mapping(target = "parentId", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
     void updateFolderFromRequest(FolderUpdateRequest request, @MappingTarget DocumentFolder folder);
 }

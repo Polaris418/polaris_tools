@@ -1,6 +1,8 @@
 spring:
   application:
     name: polaris-tools-backend
+  config:
+    import: optional:file:.env[.properties]
   profiles:
     active: dev
 
@@ -18,7 +20,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:polaris}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    password: ${DB_PASSWORD:}
     hikari:
       minimum-idle: 5
       maximum-pool-size: 20
@@ -39,10 +41,16 @@ spring:
           min-idle: 0
           max-wait: -1ms
   cache:
-    type: redis
+    type: ${SPRING_CACHE_TYPE:simple}
     redis:
       time-to-live: 600000  # 默认缓存过期时间 10 分钟（毫秒）
       cache-null-values: false  # 不缓存空值
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: ${FLYWAY_LOCATIONS:filesystem:db/migration}
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
+    baseline-version: ${FLYWAY_BASELINE_VERSION:1.0}
+    validate-on-migrate: ${FLYWAY_VALIDATE_ON_MIGRATE:true}
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
@@ -58,10 +66,21 @@ mybatis-plus:
     cache-enabled: false
 
 jwt:
-  secret: ${JWT_SECRET:polaris-dev-secret-key-change-this-in-production-minimum-32-chars}
+  # 必填：建议至少 32 个字符，启动时会进行非空校验
+  secret: ${JWT_SECRET:}
   expiration: 86400000        # 24h (1 day)
   refresh-expiration: 604800000 # 7d
   remember-me-expiration: 2592000000 # 30d (30 days)
+
+app:
+  security:
+    # 可选：敏感信息可逆加密密钥。未配置时回退使用 JWT_SECRET。
+    secret-key: ${APP_SECRET_CRYPTO_KEY:}
+  ai:
+    monitoring:
+      retention-days: ${AI_MONITORING_RETENTION_DAYS:30}
+      cleanup-cron: ${AI_MONITORING_CLEANUP_CRON:0 15 3 * * ?}
+      max-trend-points: ${AI_MONITORING_MAX_TREND_POINTS:24}
 
 logging:
   level:
@@ -154,7 +173,7 @@ aws:
 # Resend 邮件配置
 resend:
   # Resend API Key
-  api-key: ${RESEND_API_KEY:re_fHCbHwoC_NS3cgzfFXyMPa8kYVVPLVkpV}
+  api-key: ${RESEND_API_KEY:}
   # 发件人邮箱地址
   from-email: ${RESEND_FROM_EMAIL:noreply@polaristools.online}
   # 发件人名称
@@ -167,10 +186,10 @@ resend:
 springdoc:
   api-docs:
     path: /v3/api-docs
-    enabled: true
+    enabled: ${SPRINGDOC_ENABLED:true}
   swagger-ui:
     path: /swagger-ui.html
-    enabled: true
+    enabled: ${SPRINGDOC_ENABLED:true}
     tags-sorter: alpha
     operations-sorter: alpha
   show-actuator: false

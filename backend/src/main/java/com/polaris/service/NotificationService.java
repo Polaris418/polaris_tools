@@ -2,10 +2,10 @@ package com.polaris.service;
 
 import com.polaris.common.base.BaseService;
 import com.polaris.common.result.PageResult;
-import com.polaris.dto.NotificationCreateRequest;
-import com.polaris.dto.NotificationQueryRequest;
-import com.polaris.dto.NotificationResponse;
-import com.polaris.dto.NotificationUpdateRequest;
+import com.polaris.dto.notification.NotificationCreateRequest;
+import com.polaris.dto.notification.NotificationQueryRequest;
+import com.polaris.dto.notification.NotificationResponse;
+import com.polaris.dto.notification.NotificationUpdateRequest;
 import com.polaris.entity.Notification;
 
 /**

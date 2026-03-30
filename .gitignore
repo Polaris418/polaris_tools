@@ -1,14 +1,11 @@
 # Kiro IDE files
 .kiro/
 
-# Docs - 排除所有文档
-**/docs/
-**/doc/
-
-# SQL Scripts - 排除所有 SQL 脚本
+# SQL Scripts
+# 仅排除临时/历史脚本目录，迁移脚本应进入版本控制
 **/sql-scripts/
-**/sql/
-**/*.sql
+# 根目录数据库导出文件（包含示例数据，避免误提交）
+/init.sql
 
 # Environment files
 **/.env
@@ -25,6 +22,7 @@
 
 # IDE
 **/.idea/
+backend/.idea/
 **/.vscode/
 **/.vs/
 
@@ -46,8 +44,11 @@ yarn-error.log*
 **/.jqwik-database
 
 # Maven
-**/target/
 **/.mvn/
+
+# Root artifacts
+/app*.jar
+/frontend*.zip
 
 # Temporary files
 *.tmp

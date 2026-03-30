@@ -1,7 +1,7 @@
 package com.polaris.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.polaris.entity.EmailType;
+import com.polaris.email.entity.EmailType;
 import com.polaris.entity.UserEmailPreference;
 import com.polaris.mapper.UserEmailPreferenceMapper;
 import com.polaris.service.SubscriptionService;

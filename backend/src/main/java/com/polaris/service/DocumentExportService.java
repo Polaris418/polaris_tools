@@ -1,7 +1,7 @@
 package com.polaris.service;
 
-import com.polaris.dto.ExportRequest;
-import com.polaris.dto.ExportResponse;
+import com.polaris.dto.document.ExportRequest;
+import com.polaris.dto.document.ExportResponse;
 
 import java.util.List;
 

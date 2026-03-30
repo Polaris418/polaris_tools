@@ -1,7 +1,7 @@
 package com.polaris.service.impl;
 
-import com.polaris.dto.PopularToolData;
-import com.polaris.dto.TrendDataPoint;
+import com.polaris.common.dto.PopularToolData;
+import com.polaris.common.dto.TrendDataPoint;
 import com.polaris.mapper.ToolMapper;
 import com.polaris.mapper.ToolUsageMapper;
 import com.polaris.mapper.UserMapper;

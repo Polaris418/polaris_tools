@@ -1,12 +1,13 @@
 package com.polaris.converter;
 
 import com.polaris.common.base.BaseConverter;
-import com.polaris.dto.AdminUserResponse;
-import com.polaris.dto.UserRegisterRequest;
-import com.polaris.dto.UserResponse;
-import com.polaris.dto.UserUpdateRequest;
+import com.polaris.dto.admin.AdminUserResponse;
+import com.polaris.auth.dto.UserRegisterRequest;
+import com.polaris.dto.user.UserResponse;
+import com.polaris.dto.user.UserUpdateRequest;
 import com.polaris.entity.User;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
@@ -33,6 +34,22 @@ public interface UserConverter extends BaseConverter<User, UserResponse, UserReg
      * @return 用户实体
      */
     @Override
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "passwordUpdatedAt", ignore = true)
+    @Mapping(target = "avatar", ignore = true)
+    @Mapping(target = "avatarConfig", ignore = true)
+    @Mapping(target = "bio", ignore = true)
+    @Mapping(target = "language", ignore = true)
+    @Mapping(target = "planType", ignore = true)
+    @Mapping(target = "planExpiredAt", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "lastLoginAt", ignore = true)
+    @Mapping(target = "lastLoginIp", ignore = true)
+    @Mapping(target = "emailVerified", ignore = true)
+    @Mapping(target = "emailVerifiedAt", ignore = true)
     User toEntity(UserRegisterRequest request);
     
     /**
@@ -43,6 +60,21 @@ public interface UserConverter extends BaseConverter<User, UserResponse, UserReg
      * @param request 更新请求
      */
     @Override
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "username", ignore = true)
+    @Mapping(target = "password", ignore = true)
+    @Mapping(target = "passwordUpdatedAt", ignore = true)
+    @Mapping(target = "avatar", source = "avatarStyle")
+    @Mapping(target = "planType", ignore = true)
+    @Mapping(target = "planExpiredAt", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "lastLoginAt", ignore = true)
+    @Mapping(target = "lastLoginIp", ignore = true)
+    @Mapping(target = "emailVerified", ignore = true)
+    @Mapping(target = "emailVerifiedAt", ignore = true)
     void updateEntity(@MappingTarget User user, UserUpdateRequest request);
     
     /**

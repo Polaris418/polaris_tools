@@ -71,7 +71,12 @@ public enum ErrorCode {
     RATE_LIMIT_DAILY(8008, "今日发送次数已达上限"),
     EMAIL_BLOCKED(8009, "该邮箱已被临时封禁"),
     EMAIL_SEND_FAILED(8010, "邮件发送失败"),
-    CODE_GENERATE_FAILED(8011, "验证码生成失败");
+    CODE_GENERATE_FAILED(8011, "验证码生成失败"),
+
+    // AI 相关 9xxx
+    AI_FORMAT_QUOTA_EXCEEDED(9001, "AI 格式助手今日使用次数已达上限"),
+    AI_FORMAT_INVALID_RESPONSE(9002, "AI 返回了无效的格式结果"),
+    AI_PROVIDER_UNAVAILABLE(9003, "当前没有可用的 AI 提供商");
     
     private final Integer code;
     private final String message;

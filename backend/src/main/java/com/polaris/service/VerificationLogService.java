@@ -2,7 +2,7 @@ package com.polaris.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.polaris.entity.EmailVerificationLog;
+import com.polaris.email.entity.EmailVerificationLog;
 import com.polaris.entity.VerificationPurpose;
 
 import java.time.LocalDateTime;

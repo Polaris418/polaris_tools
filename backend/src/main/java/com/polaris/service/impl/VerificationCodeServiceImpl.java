@@ -1,11 +1,11 @@
 package com.polaris.service.impl;
 
-import com.polaris.dto.email.SendEmailResponse;
+import com.polaris.email.dto.SendEmailResponse;
 import com.polaris.dto.verification.SendVerificationCodeResponse;
-import com.polaris.entity.EmailVerificationCode;
+import com.polaris.email.entity.EmailVerificationCode;
 import com.polaris.entity.VerificationPurpose;
-import com.polaris.mapper.EmailVerificationCodeMapper;
-import com.polaris.service.EmailService;
+import com.polaris.email.mapper.EmailVerificationCodeMapper;
+import com.polaris.email.service.EmailService;
 import com.polaris.service.VerificationCodeService;
 import com.polaris.service.VerificationLogService;
 import lombok.RequiredArgsConstructor;
@@ -83,7 +83,10 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
             if (!sendSuccess) {
                 log.warn("验证码邮件发送失败: email={}, purpose={}, error={}", 
                         email, purpose, errorMessage);
-                // 即使邮件发送失败，验证码仍然有效（已保存到数据库）
+                return SendVerificationCodeResponse.builder()
+                        .success(false)
+                        .message(errorMessage != null ? errorMessage : "验证码发送失败，请稍后重试")
+                        .build();
             }
             
             // 返回响应

@@ -2,9 +2,9 @@ package com.polaris.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.polaris.entity.EmailVerificationLog;
+import com.polaris.email.entity.EmailVerificationLog;
 import com.polaris.entity.VerificationPurpose;
-import com.polaris.mapper.EmailVerificationLogMapper;
+import com.polaris.email.mapper.EmailVerificationLogMapper;
 import com.polaris.service.impl.VerificationLogServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
