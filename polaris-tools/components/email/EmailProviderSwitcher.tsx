@@ -7,9 +7,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Icon } from './Icon';
-import { adminApi } from '../api/adminClient';
-import type { ProviderStatus } from '../pages/admin/types';
+import { Icon } from '../Icon';
+import { adminApi } from '../../api/adminClient';
+import type { ProviderStatus } from '../../pages/admin/types';
 
 interface EmailProviderSwitcherProps {
   onSwitch?: (provider: string) => void;

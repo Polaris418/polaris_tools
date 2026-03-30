@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useLayoutEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Hero } from '../components/Hero';
 import { RecentToolCard } from '../components/RecentToolCard';
 import { StandardToolCard } from '../components/StandardToolCard';
@@ -13,7 +14,8 @@ import { apiClient } from '../api/client';
 const SCROLL_POSITION_KEY = 'dashboard_scroll_position';
 
 export const Dashboard: React.FC = () => {
-  const { t, language, navigate } = useAppContext();
+  const { t, language } = useAppContext();
+  const navigate = useNavigate();
   const mainRef = useRef<HTMLElement>(null);
   
   // Fetch tools with default query - 获取所有工具
@@ -180,7 +182,7 @@ export const Dashboard: React.FC = () => {
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <h2 className="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-tight">{t('section.recent')}</h2>
-              <button onClick={() => navigate('history')} className="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors text-sm font-medium hover:underline">{t('section.recent.view_history')}</button>
+              <button onClick={() => navigate('/history')} className="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors text-sm font-medium hover:underline">{t('section.recent.view_history')}</button>
             </div>
             
             {recentLoading ? (
@@ -270,9 +272,9 @@ export const Dashboard: React.FC = () => {
           <p>{t('footer.rights')}</p>
         </div>
         <div className="flex gap-6 font-medium">
-          <button onClick={() => navigate('privacy')} className="hover:text-slate-900 dark:hover:text-slate-400 transition-colors">{t('footer.privacy')}</button>
-          <button onClick={() => navigate('terms')} className="hover:text-slate-900 dark:hover:text-slate-400 transition-colors">{t('footer.terms')}</button>
-          <button onClick={() => navigate('contact')} className="hover:text-slate-900 dark:hover:text-slate-400 transition-colors">{t('footer.contact')}</button>
+          <button onClick={() => navigate('/privacy')} className="hover:text-slate-900 dark:hover:text-slate-400 transition-colors">{t('footer.privacy')}</button>
+          <button onClick={() => navigate('/terms')} className="hover:text-slate-900 dark:hover:text-slate-400 transition-colors">{t('footer.terms')}</button>
+          <button onClick={() => navigate('/contact')} className="hover:text-slate-900 dark:hover:text-slate-400 transition-colors">{t('footer.contact')}</button>
         </div>
       </footer>
     </main>

@@ -28,6 +28,7 @@ describe('TokenManager', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     tokenManager.clear();
   });
 

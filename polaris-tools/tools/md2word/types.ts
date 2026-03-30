@@ -3,6 +3,13 @@
  * 基于文档规范: QUICK-REFERENCE.md
  */
 
+import type {
+  BaseTemplateId,
+  FormatState,
+  ResolvedFormatConfig,
+  ScopedFormatPatch,
+} from './formatting/types';
+
 // ==================== 文件管理 ====================
 
 export enum FileStatus {
@@ -29,6 +36,7 @@ export interface FileItem {
 // ==================== 编辑器 ====================
 
 export type ViewMode = 'split' | 'source' | 'preview';
+export type PreviewEngine = 'superdoc' | 'html';
 
 // ==================== 样式规则 ====================
 
@@ -48,7 +56,7 @@ export type ExportFormat = 'docx' | 'pdf' | 'html';
 
 export interface ExportOptions {
   format: ExportFormat;
-  template: string;
+  template: BaseTemplateId;
   imageQuality: number;
   mirrorMargins: boolean;
   includeTableOfContents: boolean;
@@ -58,7 +66,7 @@ export interface ExportOptions {
 // ==================== 模板 ====================
 
 export interface TemplateOption {
-  value: string;
+  value: BaseTemplateId;
   label: string;
   labelZh: string;
   description: string;
@@ -114,9 +122,104 @@ export const TEMPLATE_OPTIONS: TemplateOption[] = [
 // ==================== 全局设置 ====================
 
 export interface GlobalSettings {
-  template: string;
+  template: BaseTemplateId;
   format: ExportFormat;
 }
+
+// ==================== 文档展示与分页预览 ====================
+
+export type PreviewMode = 'flow' | 'paged';
+export type CoverLayoutVariant = 'classic' | 'academic' | 'corporate';
+export type PageKind = 'cover' | 'body';
+
+export interface CoverConfig {
+  enabled: boolean;
+  title: string;
+  subtitle: string;
+  author: string;
+  organization: string;
+  date: string;
+  abstract: string;
+  layoutVariant: CoverLayoutVariant;
+  showPageNumber: boolean;
+}
+
+export interface PageMargins {
+  topCm: number;
+  rightCm: number;
+  bottomCm: number;
+  leftCm: number;
+  headerCm: number;
+  footerCm: number;
+}
+
+export interface PageSettings {
+  pageSize: 'a4' | 'letter';
+  margins: PageMargins;
+  showPageNumbers: boolean;
+  showPageNumberOnCover: boolean;
+  mirrorMargins: boolean;
+}
+
+export interface FragmentViewModel {
+  fragmentId: string;
+  blockId: string;
+  blockType: string;
+  segmentIds: string[];
+  pageIndex: number;
+  measuredHeight: number;
+  textPreview: string;
+}
+
+export interface PageViewModel {
+  pageId: string;
+  pageIndex: number;
+  pageKind: PageKind;
+  templateVariant: CoverLayoutVariant | 'body';
+  pageNumber: number | null;
+  availableContentHeight: number;
+  fragmentIds: string[];
+}
+
+export interface PagedPreviewState {
+  pages: PageViewModel[];
+  fragments: FragmentViewModel[];
+}
+
+export interface DocumentPresentationState {
+  previewMode: PreviewMode;
+  coverConfig: CoverConfig;
+  pageSettings: PageSettings;
+}
+
+export const DEFAULT_DOCUMENT_PRESENTATION_STATE: DocumentPresentationState = {
+  previewMode: 'paged',
+  coverConfig: {
+    enabled: false,
+    title: '',
+    subtitle: '',
+    author: '',
+    organization: '',
+    date: '',
+    abstract: '',
+    layoutVariant: 'classic',
+    showPageNumber: false,
+  },
+  pageSettings: {
+    pageSize: 'a4',
+    margins: {
+      topCm: 2.54,
+      rightCm: 2.54,
+      bottomCm: 2.54,
+      leftCm: 2.54,
+      headerCm: 1.5,
+      footerCm: 1.5,
+    },
+    showPageNumbers: true,
+    showPageNumberOnCover: false,
+    mirrorMargins: false,
+  },
+};
 
 // ==================== Tab 模式 ====================
 
@@ -132,3 +235,5 @@ export interface DocumentStats {
   paragraphCount: number;
   readTime: number;
 }
+
+export type { BaseTemplateId, FormatState, ResolvedFormatConfig, ScopedFormatPatch };

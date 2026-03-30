@@ -11,10 +11,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { EmailTemplateEditor } from '../components/EmailTemplateEditor';
-import { EmailMetricsChart } from '../components/EmailMetricsChart';
-import { EmailStatusBadge } from '../components/EmailStatusBadge';
-import { EmailVerificationBanner } from '../components/EmailVerificationBanner';
+import { EmailTemplateEditor } from '../components/email/EmailTemplateEditor';
+import { EmailMetricsChart } from '../components/email/EmailMetricsChart';
+import { EmailStatusBadge } from '../components/email/EmailStatusBadge';
+import { EmailVerificationBanner } from '../components/email/EmailVerificationBanner';
 
 describe('EmailTemplateEditor Component', () => {
   const mockOnHtmlChange = vi.fn();

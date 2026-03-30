@@ -240,7 +240,10 @@ describe('Email API Client Tests', () => {
         '/api/v1/admin/email/templates',
         {
           method: 'POST',
-          body: JSON.stringify(templateData),
+          body: JSON.stringify({
+            ...templateData,
+            version: 1,
+          }),
         }
       );
       expect(result.data.code).toBe('CUSTOM');
@@ -269,10 +272,13 @@ describe('Email API Client Tests', () => {
       const result = await adminApi.templates.update(1, updateData);
 
       expect(apiClient.request).toHaveBeenCalledWith(
-        '/api/v1/admin/email/templates/1',
+        '/api/v1/admin/email/templates',
         {
-          method: 'PUT',
-          body: JSON.stringify(updateData),
+          method: 'POST',
+          body: JSON.stringify({
+            id: 1,
+            ...updateData,
+          }),
         }
       );
       expect(result.data.name).toBe('Updated Welcome');

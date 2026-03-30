@@ -19,11 +19,13 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { AppProvider, useAppContext } from '../context/AppContext';
 import { guestUsageManager } from '../utils/guestUsageManager';
+import { tokenManager } from '../utils/tokenManager';
 import { apiClient } from '../api/client';
 
 // Mock dependencies
 vi.mock('../api/client');
 vi.mock('../utils/guestUsageManager');
+vi.mock('../utils/tokenManager');
 
 describe('Integration Test: Guest Mode Functionality', () => {
   beforeEach(() => {
@@ -45,6 +47,11 @@ describe('Integration Test: Guest Mode Functionality', () => {
     vi.mocked(guestUsageManager.shouldShowWarning).mockReturnValue(false);
     vi.mocked(guestUsageManager.getRemainingCount).mockReturnValue(10);
     vi.mocked(guestUsageManager.clear).mockImplementation(() => {});
+    vi.mocked(tokenManager.setToken).mockImplementation(() => {});
+    vi.mocked(tokenManager.startAutoRefresh).mockImplementation(() => {});
+    vi.mocked(tokenManager.stopAutoRefresh).mockImplementation(() => {});
+    vi.mocked(tokenManager.clear).mockImplementation(() => {});
+    vi.mocked(tokenManager.getExpiresAt).mockReturnValue(Date.now() + 3600000);
   });
 
   afterEach(() => {

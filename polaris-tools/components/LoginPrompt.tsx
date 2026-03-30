@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from './Icon';
-import { useAppContext } from '../context/AppContext';
+import { useI18n } from '../context/I18nContext';
 
 interface LoginPromptProps {
   message?: string;
@@ -20,7 +20,7 @@ export const LoginPrompt: React.FC<LoginPromptProps> = ({
   onLogin,
   onCancel,
 }) => {
-  const { t } = useAppContext();
+  const { t } = useI18n();
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 p-4">
       <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-2xl border border-slate-200 dark:border-border-dark max-w-md w-full animate-in zoom-in-95 duration-200">

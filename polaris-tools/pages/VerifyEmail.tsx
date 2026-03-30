@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { useAppContext } from '../context/AppContext';
 import { apiClient } from '../api/client';
 
 export const VerifyEmail: React.FC = () => {
-  const { navigate, t, showToast, refreshUser } = useAppContext();
+  const { t, showToast, refreshUser } = useAppContext();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
 
@@ -34,7 +36,7 @@ export const VerifyEmail: React.FC = () => {
           
           // 3秒后跳转到首页
           setTimeout(() => {
-            navigate('dashboard');
+            navigate('/');
           }, 3000);
         } else {
           setStatus('error');
@@ -110,7 +112,7 @@ export const VerifyEmail: React.FC = () => {
                   {message}
                 </p>
                 <button
-                  onClick={() => navigate('dashboard')}
+                  onClick={() => navigate('/')}
                   className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
                 >
                   {t('verify.back_home')}

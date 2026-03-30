@@ -49,7 +49,6 @@ export const zhCN = {
   'common.collapse': '收起',
   'common.expand': '展开',
   'common.back_home': '返回首页',
-  'common.back': '返回',
 
   // Privacy
   'privacy.title': '隐私政策',
@@ -453,8 +452,6 @@ export const zhCN = {
   'admin.templates.type.SYSTEM_MAINTENANCE': '系统维护',
 
   // Admin Emails
-  'admin.emails.title': '邮件管理',
-  'admin.emails.subtitle': '查看和管理系统邮件发送记录',
   'admin.emails.action.export': '导出 CSV',
   'admin.emails.action.cleanup': '清理旧日志',
   'admin.emails.action.view': '查看详情',
@@ -524,8 +521,6 @@ export const zhCN = {
   'admin.emails.toast.export_success': 'CSV 导出成功',
   'admin.emails.toast.export_failed': '导出失败',
   'admin.emails.status.success': '成功',
-  'admin.emails.status.failed': '失败',
-  'admin.emails.status.pending': '待发送',
 
   // Admin Dashboard
   'admin.dashboard.title': '仪表盘',
@@ -1204,8 +1199,6 @@ export const zhCN = {
   'time.weeks_ago': '{weeks} 周前',
   'time.months_ago': '{months} 月前',
   'time.years_ago': '{years} 年前',
-  'time.today': '今天',
-  'time.yesterday': '昨天',
   'time.tomorrow': '明天',
   'time.this_week': '本周',
   'time.last_week': '上周',

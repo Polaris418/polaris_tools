@@ -11,7 +11,7 @@ import { apiClient } from '../api/client';
 import { encodeSvgToDataUri } from '../utils/encoding';
 
 export const Profile: React.FC = () => {
-  const { user, showToast, refreshUser } = useAppContext();
+  const { user, showToast, refreshUser, t } = useAppContext();
   const [isEditing, setIsEditing] = useState(false);
   const [showAvatarEditor, setShowAvatarEditor] = useState(false);
   const [selectedAvatarStyle, setSelectedAvatarStyle] = useState('lorelei');

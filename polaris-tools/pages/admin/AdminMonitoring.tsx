@@ -13,7 +13,7 @@ import React, { useState, useEffect } from 'react';
 import { adminApi } from '../../api/adminClient';
 import { Icon } from '../../components/Icon';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { EmailProviderSwitcher } from '../../components/EmailProviderSwitcher';
+import { EmailProviderSwitcher } from '../../components/email/EmailProviderSwitcher';
 import { useAppContext } from '../../context/AppContext';
 import { 
   LineChart, 

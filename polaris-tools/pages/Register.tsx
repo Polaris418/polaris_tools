@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { Icon } from '../components/Icon';
 import { VerificationCodeInput } from '../components/VerificationCodeInput';
@@ -7,7 +8,8 @@ import { tokenManager } from '../utils/tokenManager';
 import { guestUsageManager } from '../utils/guestUsageManager';
 
 export const Register: React.FC = () => {
-  const { t, navigate, refreshUser, language, toggleLanguage } = useAppContext();
+  const { t, refreshUser, language, toggleLanguage } = useAppContext();
+  const navigate = useNavigate();
 
   // Form state
   const [email, setEmail] = useState('');
@@ -305,7 +307,7 @@ export const Register: React.FC = () => {
         await refreshUser();
         
         // Navigate to dashboard
-        navigate('dashboard');
+        navigate('/');
       } else {
         setError(t('register.error.response_incomplete'));
       }
@@ -651,7 +653,7 @@ export const Register: React.FC = () => {
         <div className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
           {t('auth.has_account')}{' '}
           <button
-            onClick={() => navigate('login')}
+            onClick={() => navigate('/login')}
             className="text-emerald-500 font-semibold hover:underline"
           >
             {t('auth.link.signin')}

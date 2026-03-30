@@ -1,8 +1,126 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { ToolLayout } from '../components/ToolLayout';
 import { useAppContext } from '../context/AppContext';
 
 type Mode = 'toDate' | 'toTimestamp';
+
+export interface TimestampFormatItem {
+  key: string;
+  label: string;
+  value: string;
+}
+
+const pad2 = (value: number): string => String(value).padStart(2, '0');
+
+export const formatLocalIsoString = (date: Date): string => {
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const absoluteOffset = Math.abs(offsetMinutes);
+  const offsetHours = pad2(Math.floor(absoluteOffset / 60));
+  const offsetRemainder = pad2(absoluteOffset % 60);
+
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(
+    date.getHours()
+  )}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}${sign}${offsetHours}:${offsetRemainder}`;
+};
+
+export const buildTimestampFormats = (
+  timestampSeconds: number,
+  language: 'zh' | 'en'
+): TimestampFormatItem[] => {
+  const locale = language === 'zh' ? 'zh-CN' : 'en-US';
+  const date = new Date(timestampSeconds * 1000);
+
+  return [
+    {
+      key: 'unix-seconds',
+      label: language === 'zh' ? '当前时间戳（秒）' : 'Unix seconds',
+      value: String(timestampSeconds),
+    },
+    {
+      key: 'unix-milliseconds',
+      label: language === 'zh' ? '当前时间戳（毫秒）' : 'Unix milliseconds',
+      value: String(timestampSeconds * 1000),
+    },
+    {
+      key: 'local',
+      label: language === 'zh' ? '本地时间' : 'Local time',
+      value: date.toLocaleString(locale, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }),
+    },
+    {
+      key: 'utc',
+      label: language === 'zh' ? 'UTC 时间' : 'UTC time',
+      value: date.toLocaleString(locale, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZone: 'UTC',
+      }),
+    },
+    {
+      key: 'iso-utc',
+      label: language === 'zh' ? 'ISO 8601 UTC' : 'ISO 8601 UTC',
+      value: date.toISOString(),
+    },
+    {
+      key: 'iso-local',
+      label: language === 'zh' ? 'ISO 8601 本地' : 'ISO 8601 local',
+      value: formatLocalIsoString(date),
+    },
+  ];
+};
+
+export const parseTimestampInput = (value: string): { milliseconds: number; unit: 'seconds' | 'milliseconds' } | null => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (/^\d{13}$/.test(trimmed)) {
+    return { milliseconds: Number(trimmed), unit: 'milliseconds' };
+  }
+
+  if (/^\d{10}$/.test(trimmed)) {
+    return { milliseconds: Number(trimmed) * 1000, unit: 'seconds' };
+  }
+
+  const parsedDate = new Date(trimmed);
+  if (!Number.isNaN(parsedDate.getTime())) {
+    return { milliseconds: parsedDate.getTime(), unit: 'milliseconds' };
+  }
+
+  return null;
+};
+
+export const buildRelativeTimeLabel = (timestampMs: number, nowMs: number, language: 'zh' | 'en') => {
+  const diffMs = timestampMs - nowMs;
+  const absoluteSeconds = Math.round(Math.abs(diffMs) / 1000);
+  const absoluteMinutes = Math.round(absoluteSeconds / 60);
+  const absoluteHours = Math.round(absoluteMinutes / 60);
+  const absoluteDays = Math.round(absoluteHours / 24);
+
+  const format = (value: number, unitZh: string, unitEn: string) =>
+    language === 'zh'
+      ? `${value}${unitZh}${diffMs >= 0 ? '后' : '前'}`
+      : `${value} ${unitEn}${value === 1 ? '' : 's'} ${diffMs >= 0 ? 'from now' : 'ago'}`;
+
+  if (absoluteSeconds < 60) return format(absoluteSeconds, '秒', 'second');
+  if (absoluteMinutes < 60) return format(absoluteMinutes, '分钟', 'minute');
+  if (absoluteHours < 24) return format(absoluteHours, '小时', 'hour');
+  return format(absoluteDays, '天', 'day');
+};
 
 /**
  * 时间戳转换工具
@@ -15,6 +133,7 @@ export const TimestampConverter: React.FC = () => {
   const [unit, setUnit] = useState<'seconds' | 'milliseconds'>('seconds');
   const [hasRecordedUsage, setHasRecordedUsage] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const currentFormats = useMemo(() => buildTimestampFormats(currentTimestamp, language), [currentTimestamp, language]);
 
   // 更新当前时间戳
   useEffect(() => {
@@ -27,11 +146,10 @@ export const TimestampConverter: React.FC = () => {
   // 时间戳转日期
   const timestampToDate = (ts: string): string => {
     if (!ts) return '';
-    const num = parseInt(ts);
-    if (isNaN(num)) return t('timestamp.invalid');
-    
-    const ms = unit === 'seconds' ? num * 1000 : num;
-    const date = new Date(ms);
+    const parsed = parseTimestampInput(ts);
+    if (!parsed) return t('timestamp.invalid');
+
+    const date = new Date(parsed.milliseconds);
     
     if (isNaN(date.getTime())) return t('timestamp.invalid');
     
@@ -110,6 +228,10 @@ export const TimestampConverter: React.FC = () => {
 
   const convertedDate = timestampToDate(timestamp);
   const convertedTimestamp = dateToTimestamp(dateStr);
+  const parsedTimestamp = parseTimestampInput(timestamp);
+  const relativeTimeLabel = parsedTimestamp
+    ? buildRelativeTimeLabel(parsedTimestamp.milliseconds, Date.now(), language)
+    : '';
 
   return (
     <ToolLayout toolId="timestamp-converter">
@@ -128,6 +250,30 @@ export const TimestampConverter: React.FC = () => {
             >
               {t('timestamp.use_current')}
             </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+            {currentFormats.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => copyToClipboard(item.value, item.key)}
+                className="rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-3 text-left transition-colors"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs uppercase tracking-[0.2em] text-indigo-100">{item.label}</span>
+                  <span className="text-xs text-indigo-100/80">
+                    {copiedField === item.key
+                      ? language === 'zh'
+                        ? '已复制'
+                        : 'Copied'
+                      : language === 'zh'
+                        ? '点击复制'
+                        : 'Copy'}
+                  </span>
+                </div>
+                <p className="mt-2 font-mono text-sm break-all text-white">{item.value}</p>
+              </button>
+            ))}
           </div>
         </div>
 
@@ -202,6 +348,12 @@ export const TimestampConverter: React.FC = () => {
                     {convertedDate || '-'}
                   </span>
                 </div>
+                {relativeTimeLabel && convertedDate !== t('timestamp.invalid') && (
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    {language === 'zh' ? '相对时间：' : 'Relative time: '}
+                    {relativeTimeLabel}
+                  </p>
+                )}
               </div>
             </div>
           </div>

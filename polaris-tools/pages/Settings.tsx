@@ -5,14 +5,7 @@ import { VerificationCodeInput } from '../components/VerificationCodeInput';
 import { apiClient, ApiError } from '../api/client';
 
 export const Settings: React.FC = () => {
-  const { t, theme, toggleTheme, language, toggleLanguage, user, isAuthenticated, navigate, refreshUser, showToast } = useAppContext();
-  
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('login');
-    }
-  }, [isAuthenticated, navigate]);
+  const { t, theme, toggleTheme, language, toggleLanguage, user, refreshUser, showToast } = useAppContext();
 
   // Email language preference state (synced with server)
   const [emailLanguage, setEmailLanguage] = useState<string>(user?.language || 'zh-CN');

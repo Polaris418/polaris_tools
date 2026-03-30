@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icon } from './Icon';
 import { guestUsageManager } from '../utils/guestUsageManager';
-import { useAppContext } from '../context/AppContext';
+import { useI18n } from '../context/I18nContext';
 
 interface GuestLimitDialogProps {
   remainingCount: number;
@@ -26,7 +26,7 @@ export const GuestLimitDialog: React.FC<GuestLimitDialogProps> = ({
   onRegister,
   onClose,
 }) => {
-  const { t } = useAppContext();
+  const { t } = useI18n();
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
       <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-2xl border border-slate-200 dark:border-border-dark p-8 max-w-md w-full animate-in zoom-in-95 duration-200">

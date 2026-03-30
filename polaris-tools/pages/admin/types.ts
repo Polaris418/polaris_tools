@@ -7,7 +7,7 @@ import type React from 'react';
 /**
  * Admin page types
  */
-export type AdminPage = 'dashboard' | 'users' | 'tools' | 'categories' | 'emails' | 'templates' | 'queue' | 'suppression' | 'subscriptions' | 'statistics' | 'notifications' | 'monitoring' | 'verification-monitoring';
+export type AdminPage = 'dashboard' | 'users' | 'tools' | 'categories' | 'emails' | 'templates' | 'queue' | 'suppression' | 'subscriptions' | 'statistics' | 'notifications' | 'monitoring' | 'verification-monitoring' | 'ai-providers';
 
 /**
  * User query parameters
@@ -530,4 +530,118 @@ export interface ProviderStatus {
   displayName: string;
   available: boolean;
   current: boolean;
+}
+
+export interface AiProviderConfigResponse {
+  id: number;
+  name: string;
+  providerType: string;
+  baseUrl?: string | null;
+  apiKey?: string | null;
+  model: string;
+  enabled: boolean;
+  isPrimary: boolean;
+  priority: number;
+  timeoutMs: number;
+  temperature: number;
+  topP: number;
+  maxTokens: number;
+  createdAt?: string;
+  updatedAt?: string;
+  available?: boolean;
+}
+
+export interface AiProviderConfigRequest {
+  name: string;
+  providerType: string;
+  baseUrl?: string;
+  apiKey?: string;
+  model: string;
+  enabled: boolean;
+  isPrimary: boolean;
+  priority: number;
+  timeoutMs: number;
+  temperature: number;
+  topP: number;
+  maxTokens: number;
+}
+
+export interface AiProviderConnectionTestResponse {
+  success: boolean;
+  providerType: string;
+  providerName: string;
+  latencyMs: number;
+  message: string;
+}
+
+export interface AiProviderMonitoringSummary {
+  totalProviders: number;
+  enabledProviders: number;
+  availableProviders: number;
+  healthyProviders: number;
+  degradedProviders: number;
+  totalChatRequests: number;
+  successCount: number;
+  failureCount: number;
+  fallbackCount: number;
+  lastFallbackAt?: string | null;
+}
+
+export interface AiProviderHealthSnapshot {
+  id: number;
+  name: string;
+  providerType: string;
+  model: string;
+  enabled: boolean;
+  isPrimary: boolean;
+  available: boolean;
+  priority: number;
+  healthStatus: 'healthy' | 'degraded' | 'idle' | 'disabled' | 'misconfigured';
+  successCount: number;
+  failureCount: number;
+  testSuccessCount: number;
+  testFailureCount: number;
+  fallbackCount: number;
+  avgLatencyMs: number;
+  lastLatencyMs?: number | null;
+  successRate?: number | null;
+  lastError?: string | null;
+  lastConnectionMessage?: string | null;
+  lastUsedAt?: string | null;
+  lastSuccessAt?: string | null;
+  lastFailureAt?: string | null;
+  lastTestedAt?: string | null;
+  lastFallbackAt?: string | null;
+}
+
+export interface AiProviderRecentEvent {
+  eventType: 'chat_success' | 'chat_failure' | 'fallback' | 'test_success' | 'test_failure';
+  providerId?: number | null;
+  providerName: string;
+  providerType: string;
+  relatedProviderName?: string | null;
+  success: boolean;
+  latencyMs?: number | null;
+  message: string;
+  occurredAt: string;
+}
+
+export interface AiProviderMonitoringDashboardResponse {
+  generatedAt: string;
+  rangeHours: number;
+  trendBucketHours: number;
+  retentionDays: number;
+  selectedProviderId?: number | null;
+  summary: AiProviderMonitoringSummary;
+  providers: AiProviderHealthSnapshot[];
+  recentEvents: AiProviderRecentEvent[];
+  trendPoints: AiProviderTrendPoint[];
+}
+
+export interface AiProviderTrendPoint {
+  metricHour: string;
+  successCount: number;
+  failureCount: number;
+  fallbackCount: number;
+  avgLatencyMs?: number | null;
 }

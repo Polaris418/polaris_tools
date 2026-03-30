@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { StandardToolCard } from '../components/StandardToolCard';
 import { SkeletonList } from '../components/SkeletonList';
@@ -8,7 +9,8 @@ import { apiClient } from '../api/client';
 import type { Tool, ToolResponse, CategoryResponse } from '../types';
 
 export const CategoryDetail: React.FC = () => {
-  const { t, language, navigate, currentCategoryId } = useAppContext();
+  const { t, language, currentCategoryId } = useAppContext();
+  const navigate = useNavigate();
   
   // State for category info
   const [category, setCategory] = useState<CategoryResponse | null>(null);
@@ -126,7 +128,7 @@ export const CategoryDetail: React.FC = () => {
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Back button */}
           <button
-            onClick={() => navigate('dashboard')}
+            onClick={() => navigate('/')}
             className="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
           >
             <Icon name="arrow_back" className="text-[20px]" />
@@ -156,7 +158,7 @@ export const CategoryDetail: React.FC = () => {
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Back button */}
           <button
-            onClick={() => navigate('dashboard')}
+            onClick={() => navigate('/')}
             className="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
           >
             <Icon name="arrow_back" className="text-[20px]" />
@@ -189,7 +191,7 @@ export const CategoryDetail: React.FC = () => {
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Back button */}
         <button
-          onClick={() => navigate('dashboard')}
+          onClick={() => navigate('/')}
           className="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
         >
           <Icon name="arrow_back" className="text-[20px]" />
@@ -225,7 +227,7 @@ export const CategoryDetail: React.FC = () => {
             <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">{t('category.empty.title')}</h3>
             <p className="text-slate-500 dark:text-text-secondary max-w-sm mb-6">{t('category.empty.description')}</p>
             <button 
-              onClick={() => navigate('dashboard')}
+              onClick={() => navigate('/')}
               className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
             >
               {t('hero.cta.browse')}

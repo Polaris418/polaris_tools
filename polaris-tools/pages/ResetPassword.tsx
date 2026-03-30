@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { Icon } from '../components/Icon';
 import { VerificationCodeInput } from '../components/VerificationCodeInput';
@@ -7,7 +8,8 @@ import { apiClient, ApiError } from '../api/client';
 type ResetStep = 'email' | 'code' | 'password';
 
 export const ResetPassword: React.FC = () => {
-  const { t, navigate } = useAppContext();
+  const { t } = useAppContext();
+  const navigate = useNavigate();
 
   // 当前流程步骤
   const [step, setStep] = useState<ResetStep>('email');
@@ -229,7 +231,7 @@ export const ResetPassword: React.FC = () => {
 
       // Redirect to login after 2 seconds
       setTimeout(() => {
-        navigate('login');
+        navigate('/login');
       }, 2000);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -527,7 +529,7 @@ export const ResetPassword: React.FC = () => {
         <div className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
           {t('reset.remembered')}{' '}
           <button
-            onClick={() => navigate('login')}
+            onClick={() => navigate('/login')}
             className="text-amber-500 font-semibold hover:underline"
           >
             {t('reset.back_login')}

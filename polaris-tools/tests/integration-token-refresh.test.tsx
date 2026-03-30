@@ -39,6 +39,14 @@ describe('Integration Test: Token Auto-Refresh', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    const mockCurrentUser = {
+      id: 1,
+      username: 'testuser',
+      email: 'test@example.com',
+      planType: 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
     
     // Setup default tokenManager mocks
     vi.mocked(tokenManager.setToken).mockImplementation(() => {});
@@ -49,6 +57,12 @@ describe('Integration Test: Token Auto-Refresh', () => {
     vi.mocked(tokenManager.getLifetimePercentage).mockReturnValue(50);
     vi.mocked(tokenManager.shouldRefresh).mockReturnValue(false);
     vi.mocked(tokenManager.isExpired).mockReturnValue(false);
+    vi.mocked(apiClient.auth.getCurrentUser).mockResolvedValue({
+      code: 200,
+      message: 'Success',
+      timestamp: Date.now(),
+      data: mockCurrentUser,
+    });
   });
 
   afterEach(() => {
@@ -633,6 +647,7 @@ describe('Integration Test: Token Auto-Refresh', () => {
     });
 
     it('should handle logout even when API fails', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       localStorage.setItem('token', 'valid-token');
       localStorage.setItem('refreshToken', 'valid-refresh-token');
       
@@ -651,6 +666,7 @@ describe('Integration Test: Token Auto-Refresh', () => {
       // Should still clear state even if logout API fails
       expect(tokenManager.clear).toHaveBeenCalled();
       expect(result.current.isAuthenticated).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalled();
     });
   });
 
@@ -805,12 +821,16 @@ describe('Integration Test: Token Auto-Refresh', () => {
       expect(result.current.isGuest).toBe(true);
     });
 
-    it('should handle corrupted token data', () => {
+    it('should handle corrupted token data', async () => {
       localStorage.setItem('token', 'invalid-token');
       localStorage.setItem('refreshToken', 'invalid-refresh-token');
 
       const { result } = renderHook(() => useAppContext(), {
         wrapper: AppProvider,
+      });
+
+      await waitFor(() => {
+        expect(result.current.isInitialized).toBe(true);
       });
 
       expect(result.current).toBeDefined();

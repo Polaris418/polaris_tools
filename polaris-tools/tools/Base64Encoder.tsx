@@ -4,20 +4,83 @@ import { useAppContext } from '../context/AppContext';
 
 type Mode = 'encode' | 'decode';
 
+export const normalizeBase64Input = (value: string): string => value.replace(/\s+/g, '');
+
+export const normalizeBase64UrlInput = (value: string): string =>
+  normalizeBase64Input(value).replace(/-/g, '+').replace(/_/g, '/');
+
+export const toBase64Url = (value: string): string =>
+  value.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+
+const padBase64 = (value: string): string => {
+  const remainder = value.length % 4;
+  if (remainder === 0) {
+    return value;
+  }
+
+  if (remainder === 1) {
+    throw new Error('Invalid Base64 length');
+  }
+
+  return `${value}${'='.repeat(4 - remainder)}`;
+};
+
+export const encodeBase64Text = (value: string, urlSafe = false): string => {
+  if (!value) {
+    return '';
+  }
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(value);
+  const binary = Array.from(data)
+    .map((byte) => String.fromCharCode(byte))
+    .join('');
+
+  const base64 = btoa(binary);
+  return urlSafe ? toBase64Url(base64) : base64;
+};
+
+export const decodeBase64Text = (value: string): string => {
+  if (!value) {
+    return '';
+  }
+
+  const compact = normalizeBase64Input(value);
+  if (!/^[A-Za-z0-9+/=_-]+$/.test(compact)) {
+    throw new Error('Invalid Base64 characters');
+  }
+
+  const firstPadding = compact.indexOf('=');
+  if (firstPadding !== -1 && /[^=]/.test(compact.slice(firstPadding))) {
+    throw new Error('Invalid Base64 padding');
+  }
+
+  const standard = normalizeBase64UrlInput(compact).replace(/=+$/g, '');
+  const padded = padBase64(standard);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  const decoder = new TextDecoder();
+  return decoder.decode(bytes);
+};
+
 /**
  * Base64 编码/解码工具
  */
 export const Base64Encoder: React.FC = () => {
-  const { t, isGuest, checkGuestUsage, recordGuestToolUsage } = useAppContext();
+  const { t, language, isGuest, checkGuestUsage, recordGuestToolUsage } = useAppContext();
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
   const [mode, setMode] = useState<Mode>('encode');
+  const [urlSafe, setUrlSafe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasRecordedUsage, setHasRecordedUsage] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // 处理输入变更
-  const handleInputChange = (value: string) => {
+  const handleInputChange = (value: string, currentMode?: Mode, currentUrlSafe?: boolean) => {
     if (isGuest && !hasRecordedUsage && value.length > 0 && input.length === 0) {
       if (!checkGuestUsage()) return;
       recordGuestToolUsage();
@@ -31,25 +94,25 @@ export const Base64Encoder: React.FC = () => {
       return;
     }
 
+    const m = currentMode ?? mode;
+    const safe = currentUrlSafe ?? urlSafe;
+
     try {
-      if (mode === 'encode') {
-        // 使用 TextEncoder 处理 Unicode 字符
-        const encoder = new TextEncoder();
-        const data = encoder.encode(value);
-        const binary = Array.from(data).map(b => String.fromCharCode(b)).join('');
-        setOutput(btoa(binary));
+      if (m === 'encode') {
+        setOutput(encodeBase64Text(value, safe));
       } else {
-        // 解码
-        const binary = atob(value);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-          bytes[i] = binary.charCodeAt(i);
-        }
-        const decoder = new TextDecoder();
-        setOutput(decoder.decode(bytes));
+        setOutput(decodeBase64Text(value));
       }
     } catch (e) {
-      setError(mode === 'decode' ? t('base64.invalid_input') : t('base64.encode_error'));
+      const message =
+        mode === 'decode'
+          ? language === 'zh'
+            ? '请输入有效的 Base64 或 Base64URL 字符串'
+            : 'Please enter a valid Base64 or Base64URL string'
+          : language === 'zh'
+            ? '编码失败，请检查输入内容'
+            : 'Encoding failed, please check the input';
+      setError(message);
       setOutput('');
     }
   };
@@ -62,12 +125,20 @@ export const Base64Encoder: React.FC = () => {
     setError(null);
   };
 
+  const handleUrlSafeChange = (checked: boolean) => {
+    setUrlSafe(checked);
+    if (input.trim()) {
+      handleInputChange(input, mode, checked);
+    }
+  };
+
   // 交换输入输出
   const handleSwap = () => {
     if (output && !error) {
+      const nextMode = mode === 'encode' ? 'decode' : 'encode';
       setInput(output);
-      setMode(mode === 'encode' ? 'decode' : 'encode');
-      handleInputChange(output);
+      setMode(nextMode);
+      handleInputChange(output, nextMode, urlSafe);
     }
   };
 
@@ -114,6 +185,18 @@ export const Base64Encoder: React.FC = () => {
               {t('base64.decode')}
             </button>
           </div>
+        </div>
+
+        <div className="flex items-center justify-center">
+          <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={urlSafe}
+              onChange={(e) => handleUrlSafeChange(e.target.checked)}
+              className="w-4 h-4 text-indigo-600 bg-slate-100 border-slate-300 rounded focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600"
+            />
+            <span>{language === 'zh' ? '使用 URL-safe Base64' : 'Use URL-safe Base64'}</span>
+          </label>
         </div>
 
         {/* 输入区域 */}

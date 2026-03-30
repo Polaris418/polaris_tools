@@ -67,6 +67,22 @@ const renderWithContext = (component: React.ReactElement) => {
   );
 };
 
+const findActionButton = (keywords: string[]) => {
+  const lowerKeywords = keywords.map((key) => key.toLowerCase());
+  return screen.getAllByRole('button').find((button) => {
+    const title = (button.getAttribute('title') || '').toLowerCase();
+    const text = (button.textContent || '').toLowerCase();
+    return lowerKeywords.some((keyword) => title.includes(keyword) || text.includes(keyword));
+  });
+};
+
+const findConfirmDeleteButton = () => {
+  return screen.getAllByRole('button').find((button) => {
+    const text = (button.textContent || '').trim().toLowerCase();
+    return text === '永久删除' || text.includes('permanent delete');
+  });
+};
+
 describe('E2E: Deleted Data Operations - Users', () => {
   const mockDeletedUser: AdminUserResponse = {
     id: 1,
@@ -120,11 +136,10 @@ describe('E2E: Deleted Data Operations - Users', () => {
     }, { timeout: 3000 });
 
     // Verify deleted badge is shown
-    expect(screen.getByText(/deleted/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/已删除|deleted/i).length).toBeGreaterThan(0);
 
     // Verify edit button exists for deleted record
-    const editButtons = screen.getAllByRole('button');
-    const editButton = editButtons.find(btn => btn.textContent?.includes('Edit') || btn.title?.includes('Edit'));
+    const editButton = findActionButton(['编辑', 'edit']);
     expect(editButton).toBeDefined();
   });
 
@@ -170,8 +185,9 @@ describe('E2E: Deleted Data Operations - Users', () => {
     }, { timeout: 3000 });
 
     // Find and click restore button
-    const restoreButton = screen.getByRole('button', { name: /restore/i });
-    await user.click(restoreButton);
+    const restoreButton = findActionButton(['恢复', 'restore']);
+    expect(restoreButton).toBeDefined();
+    await user.click(restoreButton as HTMLElement);
 
     // Verify restore API was called
     await waitFor(() => {
@@ -225,23 +241,20 @@ describe('E2E: Deleted Data Operations - Users', () => {
     }, { timeout: 3000 });
 
     // Find and click permanent delete button
-    const deleteButton = screen.getByRole('button', { name: /permanent delete/i });
-    await user.click(deleteButton);
+    const deleteButton = findActionButton(['永久删除', 'delete_forever']);
+    expect(deleteButton).toBeDefined();
+    await user.click(deleteButton as HTMLElement);
 
     // Verify confirmation dialog appears
     await waitFor(() => {
-      expect(screen.getByText(/confirm/i)).toBeInTheDocument();
+      expect(screen.getByText(/确认|confirm/i)).toBeInTheDocument();
     });
 
     // Find and click confirm button in dialog
-    const confirmButtons = screen.getAllByRole('button');
-    const confirmButton = confirmButtons.find(btn => 
-      btn.textContent?.toLowerCase().includes('permanent') || 
-      btn.textContent?.toLowerCase().includes('delete')
-    );
+    const confirmButton = findConfirmDeleteButton();
     
     if (confirmButton) {
-      await user.click(confirmButton);
+      await user.click(confirmButton as HTMLElement);
 
       // Verify permanent delete API was called
       await waitFor(() => {
@@ -300,15 +313,14 @@ describe('E2E: Deleted Data Operations - Tools', () => {
     renderWithContext(<AdminTools />);
 
     await waitFor(() => {
-      expect(screen.getByText('Deleted Tool')).toBeInTheDocument();
+      expect(screen.getByText('已删除工具')).toBeInTheDocument();
     }, { timeout: 3000 });
 
     // Verify deleted badge is shown
-    expect(screen.getByText(/deleted/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/已删除|deleted/i).length).toBeGreaterThan(0);
 
     // Verify edit button exists
-    const editButtons = screen.getAllByRole('button');
-    const editButton = editButtons.find(btn => btn.textContent?.includes('Edit') || btn.title?.includes('Edit'));
+    const editButton = findActionButton(['编辑', 'edit']);
     expect(editButton).toBeDefined();
   });
 
@@ -335,11 +347,12 @@ describe('E2E: Deleted Data Operations - Tools', () => {
     renderWithContext(<AdminTools />);
 
     await waitFor(() => {
-      expect(screen.getByText('Deleted Tool')).toBeInTheDocument();
+      expect(screen.getByText('已删除工具')).toBeInTheDocument();
     }, { timeout: 3000 });
 
-    const restoreButton = screen.getByRole('button', { name: /restore/i });
-    await user.click(restoreButton);
+    const restoreButton = findActionButton(['恢复', 'restore']);
+    expect(restoreButton).toBeDefined();
+    await user.click(restoreButton as HTMLElement);
 
     await waitFor(() => {
       expect(adminApi.tools.restore).toHaveBeenCalledWith(1);
@@ -369,24 +382,21 @@ describe('E2E: Deleted Data Operations - Tools', () => {
     renderWithContext(<AdminTools />);
 
     await waitFor(() => {
-      expect(screen.getByText('Deleted Tool')).toBeInTheDocument();
+      expect(screen.getByText('已删除工具')).toBeInTheDocument();
     }, { timeout: 3000 });
 
-    const deleteButton = screen.getByRole('button', { name: /permanent delete/i });
-    await user.click(deleteButton);
+    const deleteButton = findActionButton(['永久删除', 'delete_forever']);
+    expect(deleteButton).toBeDefined();
+    await user.click(deleteButton as HTMLElement);
 
     await waitFor(() => {
-      expect(screen.getByText(/confirm/i)).toBeInTheDocument();
+      expect(screen.getByText(/确认|confirm/i)).toBeInTheDocument();
     });
 
-    const confirmButtons = screen.getAllByRole('button');
-    const confirmButton = confirmButtons.find(btn => 
-      btn.textContent?.toLowerCase().includes('permanent') || 
-      btn.textContent?.toLowerCase().includes('delete')
-    );
+    const confirmButton = findConfirmDeleteButton();
     
     if (confirmButton) {
-      await user.click(confirmButton);
+      await user.click(confirmButton as HTMLElement);
 
       await waitFor(() => {
         expect(adminApi.tools.permanentDelete).toHaveBeenCalledWith(1);
@@ -444,10 +454,9 @@ describe('E2E: Deleted Data Operations - Categories', () => {
       expect(screen.getByText('已删除分类')).toBeInTheDocument();
     }, { timeout: 3000 });
 
-    expect(screen.getByText(/已删除/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/已删除/i).length).toBeGreaterThan(0);
 
-    const editButtons = screen.getAllByRole('button');
-    const editButton = editButtons.find(btn => btn.title?.includes('编辑'));
+    const editButton = findActionButton(['编辑', 'edit']);
     expect(editButton).toBeDefined();
   });
 
@@ -473,8 +482,9 @@ describe('E2E: Deleted Data Operations - Categories', () => {
       expect(screen.getByText('已删除分类')).toBeInTheDocument();
     }, { timeout: 3000 });
 
-    const restoreButton = screen.getByRole('button', { name: /restore/i });
-    await user.click(restoreButton);
+    const restoreButton = findActionButton(['恢复', 'restore']);
+    expect(restoreButton).toBeDefined();
+    await user.click(restoreButton as HTMLElement);
 
     await waitFor(() => {
       expect(adminApi.categories.restore).toHaveBeenCalledWith(1);
@@ -503,22 +513,18 @@ describe('E2E: Deleted Data Operations - Categories', () => {
       expect(screen.getByText('已删除分类')).toBeInTheDocument();
     }, { timeout: 3000 });
 
-    const deleteButton = screen.getByRole('button', { name: /delete_forever/i });
-    await user.click(deleteButton);
+    const deleteButton = findActionButton(['永久删除', 'delete_forever']);
+    expect(deleteButton).toBeDefined();
+    await user.click(deleteButton as HTMLElement);
 
     await waitFor(() => {
       expect(screen.getByText(/确认/i)).toBeInTheDocument();
     });
 
-    const confirmButtons = screen.getAllByRole('button');
-    const confirmButton = confirmButtons.find(btn => 
-      btn.textContent?.toLowerCase().includes('permanent') || 
-      btn.textContent?.toLowerCase().includes('delete') ||
-      btn.textContent?.includes('永久删除')
-    );
+    const confirmButton = findConfirmDeleteButton();
     
     if (confirmButton) {
-      await user.click(confirmButton);
+      await user.click(confirmButton as HTMLElement);
 
       await waitFor(() => {
         expect(adminApi.categories.permanentDelete).toHaveBeenCalledWith(1);
@@ -573,12 +579,14 @@ describe('E2E: Filter State Preservation', () => {
     }, { timeout: 3000 });
 
     // Enable deleted filter - button contains "已删除" (deleted in Chinese)
-    const deletedFilterButton = screen.getByRole('button', { name: /delete 已删除/i });
-    await user.click(deletedFilterButton);
+    const deletedFilterButton = findActionButton(['已删除', 'deleted']);
+    expect(deletedFilterButton).toBeDefined();
+    await user.click(deletedFilterButton as HTMLElement);
 
     // Restore user
-    const restoreButton = screen.getByRole('button', { name: /restore/i });
-    await user.click(restoreButton);
+    const restoreButton = findActionButton(['恢复', 'restore']);
+    expect(restoreButton).toBeDefined();
+    await user.click(restoreButton as HTMLElement);
 
     // Verify list was called with includeDeleted parameter preserved
     await waitFor(() => {

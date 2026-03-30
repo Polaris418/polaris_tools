@@ -2,6 +2,310 @@ import React, { useState, useRef } from 'react';
 import { ToolLayout } from '../components/ToolLayout';
 import { useAppContext } from '../context/AppContext';
 
+export interface RgbColor {
+  r: number;
+  g: number;
+  b: number;
+}
+
+export interface HslColor {
+  h: number;
+  s: number;
+  l: number;
+}
+
+export interface CmykColor {
+  c: number;
+  m: number;
+  y: number;
+  k: number;
+}
+
+export interface PaletteColor {
+  label: string;
+  hex: string;
+  rgb: RgbColor;
+  hsl: HslColor;
+}
+
+export interface PaletteSuggestion {
+  key: 'complementary' | 'analogous' | 'triadic';
+  label: string;
+  colors: PaletteColor[];
+}
+
+export interface ContrastColorChoice {
+  label: '黑色文字' | '白色文字';
+  hex: '#000000' | '#ffffff';
+  ratio: number;
+  passesAA: boolean;
+  passesAAA: boolean;
+}
+
+export interface ContrastReport {
+  black: ContrastColorChoice;
+  white: ContrastColorChoice;
+  recommended: ContrastColorChoice;
+  level: 'AAA' | 'AA' | '未达标';
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+export const normalizeHexColor = (hex: string): string | null => {
+  const clean = hex.trim().replace(/^#/, '');
+  if (/^[0-9a-f]{3}$/i.test(clean)) {
+    return `#${clean
+      .split('')
+      .map((char) => char + char)
+      .join('')
+      .toLowerCase()}`;
+  }
+
+  if (/^[0-9a-f]{6}$/i.test(clean)) {
+    return `#${clean.toLowerCase()}`;
+  }
+
+  return null;
+};
+
+export const hexToRgb = (hex: string): RgbColor | null => {
+  const normalized = normalizeHexColor(hex);
+  if (!normalized) {
+    return null;
+  }
+
+  const result = /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(normalized);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : null;
+};
+
+export const rgbToHex = (r: number, g: number, b: number): string => {
+  return '#' + [r, g, b].map((x) => {
+    const hex = clamp(Math.round(x), 0, 255).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  }).join('');
+};
+
+export const rgbToHsl = (r: number, g: number, b: number): HslColor => {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        break;
+      case g:
+        h = ((b - r) / d + 2) / 6;
+        break;
+      case b:
+        h = ((r - g) / d + 4) / 6;
+        break;
+    }
+  }
+
+  return {
+    h: Math.round(h * 360),
+    s: Math.round(s * 100),
+    l: Math.round(l * 100)
+  };
+};
+
+export const hslToRgb = (h: number, s: number, l: number): RgbColor => {
+  const normalizedHue = ((h % 360) + 360) % 360;
+  const hue = normalizedHue / 360;
+  const saturation = clamp(s, 0, 100) / 100;
+  const lightness = clamp(l, 0, 100) / 100;
+  let r: number;
+  let g: number;
+  let b: number;
+
+  if (saturation === 0) {
+    r = g = b = lightness;
+  } else {
+    const hue2rgb = (p: number, q: number, t: number) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+
+    const q = lightness < 0.5 ? lightness * (1 + saturation) : lightness + saturation - lightness * saturation;
+    const p = 2 * lightness - q;
+    r = hue2rgb(p, q, hue + 1 / 3);
+    g = hue2rgb(p, q, hue);
+    b = hue2rgb(p, q, hue - 1 / 3);
+  }
+
+  return {
+    r: Math.round(r * 255),
+    g: Math.round(g * 255),
+    b: Math.round(b * 255)
+  };
+};
+
+export const rgbToCmyk = (r: number, g: number, b: number): CmykColor => {
+  const red = r / 255;
+  const green = g / 255;
+  const blue = b / 255;
+  const k = 1 - Math.max(red, green, blue);
+
+  if (k === 1) {
+    return { c: 0, m: 0, y: 0, k: 100 };
+  }
+
+  const c = (1 - red - k) / (1 - k);
+  const m = (1 - green - k) / (1 - k);
+  const y = (1 - blue - k) / (1 - k);
+
+  return {
+    c: Math.round(c * 100),
+    m: Math.round(m * 100),
+    y: Math.round(y * 100),
+    k: Math.round(k * 100)
+  };
+};
+
+export const cmykToRgb = (c: number, m: number, y: number, k: number): RgbColor => {
+  const cyan = clamp(c, 0, 100) / 100;
+  const magenta = clamp(m, 0, 100) / 100;
+  const yellow = clamp(y, 0, 100) / 100;
+  const black = clamp(k, 0, 100) / 100;
+
+  return {
+    r: Math.round(255 * (1 - cyan) * (1 - black)),
+    g: Math.round(255 * (1 - magenta) * (1 - black)),
+    b: Math.round(255 * (1 - yellow) * (1 - black))
+  };
+};
+
+export const getRelativeLuminance = (rgb: RgbColor): number => {
+  const convert = (value: number) => {
+    const normalized = value / 255;
+    return normalized <= 0.03928
+      ? normalized / 12.92
+      : Math.pow((normalized + 0.055) / 1.055, 2.4);
+  };
+
+  const red = convert(rgb.r);
+  const green = convert(rgb.g);
+  const blue = convert(rgb.b);
+
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+};
+
+export const getContrastRatio = (foreground: RgbColor, background: RgbColor): number => {
+  const foregroundLuminance = getRelativeLuminance(foreground);
+  const backgroundLuminance = getRelativeLuminance(background);
+  const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+  const darker = Math.min(foregroundLuminance, backgroundLuminance);
+  return Math.round(((lighter + 0.05) / (darker + 0.05)) * 100) / 100;
+};
+
+export const getContrastComplianceLevel = (ratio: number): ContrastReport['level'] => {
+  if (ratio >= 7) {
+    return 'AAA';
+  }
+  if (ratio >= 4.5) {
+    return 'AA';
+  }
+  return '未达标';
+};
+
+export const getAccessibleTextColor = (background: RgbColor): ContrastReport => {
+  const blackChoice: ContrastColorChoice = {
+    label: '黑色文字',
+    hex: '#000000',
+    ratio: getContrastRatio({ r: 0, g: 0, b: 0 }, background),
+    passesAA: false,
+    passesAAA: false
+  };
+  blackChoice.passesAA = blackChoice.ratio >= 4.5;
+  blackChoice.passesAAA = blackChoice.ratio >= 7;
+
+  const whiteChoice: ContrastColorChoice = {
+    label: '白色文字',
+    hex: '#ffffff',
+    ratio: getContrastRatio({ r: 255, g: 255, b: 255 }, background),
+    passesAA: false,
+    passesAAA: false
+  };
+  whiteChoice.passesAA = whiteChoice.ratio >= 4.5;
+  whiteChoice.passesAAA = whiteChoice.ratio >= 7;
+
+  const recommended = blackChoice.ratio >= whiteChoice.ratio ? blackChoice : whiteChoice;
+
+  return {
+    black: blackChoice,
+    white: whiteChoice,
+    recommended,
+    level: getContrastComplianceLevel(recommended.ratio)
+  };
+};
+
+const rotateHue = (hue: number, delta: number): number => ((hue + delta) % 360 + 360) % 360;
+
+const paletteColorFromHsl = (label: string, hsl: HslColor): PaletteColor => {
+  const rgb = hslToRgb(hsl.h, hsl.s, hsl.l);
+  return {
+    label,
+    hex: rgbToHex(rgb.r, rgb.g, rgb.b).toLowerCase(),
+    rgb,
+    hsl
+  };
+};
+
+export const buildPaletteSuggestions = (rgb: RgbColor): PaletteSuggestion[] => {
+  const baseHsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+  const complementaryHue = rotateHue(baseHsl.h, 180);
+  const analogousBeforeHue = rotateHue(baseHsl.h, -30);
+  const analogousAfterHue = rotateHue(baseHsl.h, 30);
+  const triadicFirstHue = rotateHue(baseHsl.h, 120);
+  const triadicSecondHue = rotateHue(baseHsl.h, 240);
+
+  return [
+    {
+      key: 'complementary',
+      label: '互补色',
+      colors: [
+        paletteColorFromHsl('基色', baseHsl),
+        paletteColorFromHsl('互补色', { ...baseHsl, h: complementaryHue })
+      ]
+    },
+    {
+      key: 'analogous',
+      label: '类似色',
+      colors: [
+        paletteColorFromHsl('前类似色', { ...baseHsl, h: analogousBeforeHue }),
+        paletteColorFromHsl('基色', baseHsl),
+        paletteColorFromHsl('后类似色', { ...baseHsl, h: analogousAfterHue })
+      ]
+    },
+    {
+      key: 'triadic',
+      label: '三色系',
+      colors: [
+        paletteColorFromHsl('基色', baseHsl),
+        paletteColorFromHsl('三色系 1', { ...baseHsl, h: triadicFirstHue }),
+        paletteColorFromHsl('三色系 2', { ...baseHsl, h: triadicSecondHue })
+      ]
+    }
+  ];
+};
+
 /**
  * 颜色转换器工具
  * 支持 HEX、RGB、HSL、CMYK 格式互转
@@ -16,6 +320,9 @@ export const ColorConverter: React.FC = () => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [hasRecordedUsage, setHasRecordedUsage] = useState(false);
   const colorInputRef = useRef<HTMLInputElement>(null);
+  const previewHex = normalizeHexColor(hex) ?? '#667eea';
+  const contrastReport = getAccessibleTextColor(rgb);
+  const paletteSuggestions = buildPaletteSuggestions(rgb);
 
   // HEX 转 RGB（支持简写如 #fff）
   const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
@@ -235,7 +542,7 @@ export const ColorConverter: React.FC = () => {
   return (
     <ToolLayout toolId="color-converter">
       <style dangerouslySetInnerHTML={{ __html: `
-        .color-preview-bg { background-color: ${hex}; }
+        .color-preview-bg { background-color: ${previewHex}; }
         .hue-gradient { background: ${generateHueGradient()}; }
         .saturation-gradient { background: linear-gradient(to right, hsl(${hsl.h}, 0%, ${hsl.l}%), hsl(${hsl.h}, 100%, ${hsl.l}%)); }
         .lightness-gradient { background: linear-gradient(to right, hsl(${hsl.h}, ${hsl.s}%, 0%), hsl(${hsl.h}, ${hsl.s}%, 50%), hsl(${hsl.h}, ${hsl.s}%, 100%)); }
@@ -254,7 +561,7 @@ export const ColorConverter: React.FC = () => {
                   ref={colorInputRef}
                   id="color-picker-input"
                   type="color"
-                  value={hex.length === 4 ? hex.replace(/#([0-9a-f])([0-9a-f])([0-9a-f])/i, '#$1$1$2$2$3$3') : hex}
+                  value={previewHex}
                   onChange={handleColorPickerChange}
                   aria-label="颜色选择器"
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -269,7 +576,7 @@ export const ColorConverter: React.FC = () => {
             <div className="flex-1 flex flex-col justify-center space-y-3">
               <div className="text-center md:text-left">
                 <p className="text-4xl font-bold text-slate-900 dark:text-white tracking-wider">
-                  {hex.toUpperCase()}
+                  {previewHex.toUpperCase()}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
                   rgb({rgb.r}, {rgb.g}, {rgb.b})
@@ -327,6 +634,123 @@ export const ColorConverter: React.FC = () => {
                 onChange={(e) => handleHslChange('l', parseInt(e.target.value))}
                 className="w-full h-3 rounded-lg appearance-none cursor-pointer lightness-gradient"
               />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400">accessibility_new</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 dark:text-white">无障碍对比度</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">对比黑白文字，优先推荐可读性更高的前景色</p>
+                </div>
+              </div>
+              <button
+                onClick={() => copyToClipboard(contrastReport.recommended.hex, 'contrast')}
+                className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+              >
+                {copiedField === 'contrast' ? t('color_converter.copied') : t('color_converter.copy')}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[contrastReport.black, contrastReport.white].map((choice) => (
+                <div
+                  key={choice.hex}
+                  className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className="w-8 h-8 rounded-full border border-white/60 shadow-sm shrink-0"
+                      style={{ backgroundColor: choice.hex }}
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">{choice.label}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {choice.ratio.toFixed(2)}:1 · {choice.passesAAA ? 'AAA' : choice.passesAA ? 'AA' : '未达标'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(choice.hex, choice.label)}
+                    className="text-xs px-2 py-1 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-300 transition-colors"
+                  >
+                    复制
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-lg border border-indigo-200 dark:border-indigo-900/40 bg-indigo-50/70 dark:bg-indigo-500/10 p-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-slate-900 dark:text-white">推荐前景色</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {contrastReport.recommended.label} · {contrastReport.recommended.ratio.toFixed(2)}:1 · {contrastReport.level}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-8 h-8 rounded-full border border-white/60 shadow-sm"
+                  style={{ backgroundColor: contrastReport.recommended.hex }}
+                  aria-hidden="true"
+                />
+                <code className="text-sm font-mono text-slate-700 dark:text-slate-200">{contrastReport.recommended.hex.toUpperCase()}</code>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-violet-600 dark:text-violet-400">palette</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 dark:text-white">配色建议</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">控制在实用范围内，提供互补、类似和三色系</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {paletteSuggestions.map((suggestion) => (
+                <div key={suggestion.key} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">{suggestion.label}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{suggestion.colors.length} 个颜色</p>
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(suggestion.colors.map((item) => item.hex).join(', '), suggestion.key)}
+                      className="text-xs px-2 py-1 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-300 transition-colors"
+                    >
+                      复制整组
+                    </button>
+                  </div>
+                  <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${suggestion.colors.length}, minmax(0, 1fr))` }}>
+                    {suggestion.colors.map((item) => (
+                      <button
+                        key={`${suggestion.key}-${item.hex}`}
+                        type="button"
+                        onClick={() => copyToClipboard(item.hex, item.hex)}
+                        className="text-left rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden hover:-translate-y-0.5 hover:shadow-sm transition-all"
+                      >
+                        <div className="h-14" style={{ backgroundColor: item.hex }} aria-hidden="true" />
+                        <div className="p-3 space-y-1">
+                          <p className="text-xs font-medium text-slate-900 dark:text-white">{item.label}</p>
+                          <p className="text-xs font-mono text-slate-500 dark:text-slate-400 uppercase">{item.hex}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

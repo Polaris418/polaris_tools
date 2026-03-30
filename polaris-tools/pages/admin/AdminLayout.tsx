@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { useAppContext } from '../../context/AppContext';
 import type { AdminPage } from './types';
@@ -14,7 +15,8 @@ interface AdminLayoutProps {
  * 管理员布局组件 - 包含侧边栏和头部
  */
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentPage, onNavigate }) => {
-  const { t, theme, toggleTheme, language, toggleLanguage, navigate, user, logout } = useAppContext();
+  const { t, theme, toggleTheme, language, toggleLanguage, user, logout } = useAppContext();
+  const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [emailMenuExpanded, setEmailMenuExpanded] = useState(true);
 
@@ -42,6 +44,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentPage,
     { id: 'verification-monitoring', icon: 'verified_user', label: t('admin.menu.notifications'), isEmailSubItem: true },
     { id: 'statistics', icon: 'analytics', label: t('admin.menu.statistics') },
     { id: 'notifications', icon: 'notifications', label: t('admin.menu.notifications') },
+    { id: 'ai-providers', icon: 'smart_toy', label: language === 'zh' ? 'AI 提供商' : 'AI Providers' },
   ];
 
   // Auto-expand email menu if current page is an email page
@@ -61,7 +64,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentPage,
   };
 
   const handleBackToMain = () => {
-    navigate('dashboard');
+    navigate('/');
   };
 
   return (

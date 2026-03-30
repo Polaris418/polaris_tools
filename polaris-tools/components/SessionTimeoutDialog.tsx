@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Icon } from './Icon';
-import { useAppContext } from '../context/AppContext';
+import { useI18n } from '../context/I18nContext';
 
 interface SessionTimeoutDialogProps {
   expiresAt: number;
@@ -26,7 +26,7 @@ export const SessionTimeoutDialog: React.FC<SessionTimeoutDialogProps> = ({
   onLogout,
   onClose,
 }) => {
-  const { t } = useAppContext();
+  const { t } = useI18n();
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
   // 计算剩余时间

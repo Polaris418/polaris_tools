@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { ToolLayout } from '../components/ToolLayout';
 import { useAppContext } from '../context/AppContext';
 
-interface PasswordOptions {
+export interface PasswordOptions {
   length: number;
   uppercase: boolean;
   lowercase: boolean;
@@ -11,6 +11,144 @@ interface PasswordOptions {
   excludeSimilar: boolean;
   excludeAmbiguous: boolean;
 }
+
+interface PasswordPool {
+  key: keyof Pick<PasswordOptions, 'uppercase' | 'lowercase' | 'numbers' | 'symbols'>;
+  label: string;
+  chars: string;
+}
+
+interface PasswordGenerationResult {
+  password: string;
+  minimumLength: number;
+}
+
+export interface PasswordEntropyReport {
+  minimumLength: number;
+  effectiveLength: number;
+  charsetSize: number;
+  entropyBits: number;
+  securityLabel: '较弱' | '一般' | '较强' | '很强';
+  note: string;
+}
+
+const PASSWORD_CHARSETS: Record<PasswordPool['key'], string> = {
+  uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  lowercase: 'abcdefghijklmnopqrstuvwxyz',
+  numbers: '0123456789',
+  symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?',
+};
+
+const SIMILAR_CHARS = 'il1Lo0O';
+const AMBIGUOUS_CHARS = '{}[]()/\\\'"`~,;:.<>';
+
+const getRandomInt = (max: number) => {
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return max > 0 ? array[0] % max : 0;
+};
+
+const pickRandomChar = (chars: string) => chars.charAt(getRandomInt(chars.length));
+
+const shuffleChars = (chars: string[]) => {
+  const result = [...chars];
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = getRandomInt(i + 1);
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+};
+
+const buildPools = (options: PasswordOptions): PasswordPool[] => {
+  const pools: PasswordPool[] = [];
+
+  (Object.entries(PASSWORD_CHARSETS) as [PasswordPool['key'], string][]).forEach(([key, chars]) => {
+    if (!options[key]) {
+      return;
+    }
+
+    let poolChars = chars;
+    if (options.excludeSimilar) {
+      poolChars = poolChars.split('').filter((char) => !SIMILAR_CHARS.includes(char)).join('');
+    }
+    if (options.excludeAmbiguous) {
+      poolChars = poolChars.split('').filter((char) => !AMBIGUOUS_CHARS.includes(char)).join('');
+    }
+
+    if (poolChars) {
+      pools.push({
+        key,
+        label: key,
+        chars: poolChars,
+      });
+    }
+  });
+
+  return pools;
+};
+
+export const generateSecurePassword = (options: PasswordOptions): PasswordGenerationResult => {
+  const pools = buildPools(options);
+  const effectivePools = pools.length > 0
+    ? pools
+    : [{
+        key: 'lowercase',
+        label: 'lowercase',
+        chars: PASSWORD_CHARSETS.lowercase,
+      }];
+
+  const minimumLength = Math.max(1, effectivePools.length);
+  const targetLength = Math.max(options.length, minimumLength);
+  const combinedChars = effectivePools.map((pool) => pool.chars).join('');
+  const baseChars = effectivePools.map((pool) => pickRandomChar(pool.chars));
+  const extraChars = Array.from({ length: targetLength - baseChars.length }, () => pickRandomChar(combinedChars));
+
+  return {
+    password: shuffleChars([...baseChars, ...extraChars]).join(''),
+    minimumLength,
+  };
+};
+
+export const calculatePasswordEntropy = (options: PasswordOptions): PasswordEntropyReport => {
+  const pools = buildPools(options);
+  const effectivePools = pools.length > 0
+    ? pools
+    : [{
+        key: 'lowercase',
+        label: 'lowercase',
+        chars: PASSWORD_CHARSETS.lowercase,
+      }];
+
+  const minimumLength = Math.max(1, effectivePools.length);
+  const effectiveLength = Math.max(options.length, minimumLength);
+  const charsetSize = effectivePools.reduce((total, pool) => total + pool.chars.length, 0);
+  const mandatoryEntropy = effectivePools.reduce((total, pool) => total + Math.log2(pool.chars.length), 0);
+  const flexibleEntropy = Math.max(0, effectiveLength - effectivePools.length) * Math.log2(charsetSize);
+  const entropyBits = Number((mandatoryEntropy + flexibleEntropy).toFixed(1));
+
+  let securityLabel: PasswordEntropyReport['securityLabel'] = '较弱';
+  let note = '建议提高长度或启用更多字符集。';
+
+  if (entropyBits >= 96) {
+    securityLabel = '很强';
+    note = '适合长期保存的高价值密码。';
+  } else if (entropyBits >= 72) {
+    securityLabel = '较强';
+    note = '适合多数日常账号使用。';
+  } else if (entropyBits >= 48) {
+    securityLabel = '一般';
+    note = '可用，但建议配合更长长度或更多字符集。';
+  }
+
+  return {
+    minimumLength,
+    effectiveLength,
+    charsetSize,
+    entropyBits,
+    securityLabel,
+    note,
+  };
+};
 
 /**
  * 密码生成器工具
@@ -32,70 +170,31 @@ export const PasswordGenerator: React.FC = () => {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
 
-  // 字符集
-  const charsets = {
-    uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-    lowercase: 'abcdefghijklmnopqrstuvwxyz',
-    numbers: '0123456789',
-    symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?',
-  };
-
-  // 相似字符
-  const similarChars = 'il1Lo0O';
-  // 歧义字符
-  const ambiguousChars = '{}[]()/\\\'"`~,;:.<>';
-
-  // 生成密码
-  const generatePassword = (): string => {
-    let charset = '';
-    
-    if (options.uppercase) charset += charsets.uppercase;
-    if (options.lowercase) charset += charsets.lowercase;
-    if (options.numbers) charset += charsets.numbers;
-    if (options.symbols) charset += charsets.symbols;
-
-    if (!charset) {
-      charset = charsets.lowercase; // 默认至少使用小写字母
-    }
-
-    // 排除相似字符
-    if (options.excludeSimilar) {
-      charset = charset.split('').filter(c => !similarChars.includes(c)).join('');
-    }
-
-    // 排除歧义字符
-    if (options.excludeAmbiguous) {
-      charset = charset.split('').filter(c => !ambiguousChars.includes(c)).join('');
-    }
-
-    // 使用 crypto API 生成随机数
-    const array = new Uint32Array(options.length);
-    crypto.getRandomValues(array);
-    
-    let password = '';
-    for (let i = 0; i < options.length; i++) {
-      password += charset[array[i] % charset.length];
-    }
-
-    return password;
-  };
+  const pools = useMemo(() => buildPools(options), [options]);
+  const minimumLength = Math.max(1, pools.length);
+  const lengthTooShort = options.length < minimumLength;
+  const entropyReport = useMemo(() => calculatePasswordEntropy(options), [options]);
 
   // 生成多个密码
   const generatePasswords = () => {
+    if (lengthTooShort) {
+      return;
+    }
+
     if (isGuest && !hasRecordedUsage) {
       if (!checkGuestUsage()) return;
       recordGuestToolUsage();
       setHasRecordedUsage(true);
     }
 
-    const newPasswords = Array.from({ length: count }, generatePassword);
+    const newPasswords = Array.from({ length: count }, () => generateSecurePassword(options).password);
     setPasswords(newPasswords);
   };
 
   // 计算密码强度
   const calculateStrength = (password: string): { score: number; label: string; color: string } => {
     let score = 0;
-    
+
     if (password.length >= 8) score += 1;
     if (password.length >= 12) score += 1;
     if (password.length >= 16) score += 1;
@@ -128,7 +227,7 @@ export const PasswordGenerator: React.FC = () => {
 
   // 更新选项
   const updateOption = <K extends keyof PasswordOptions>(key: K, value: PasswordOptions[K]) => {
-    setOptions(prev => ({ ...prev, [key]: value }));
+    setOptions((prev) => ({ ...prev, [key]: value }));
   };
 
   // 清空
@@ -156,16 +255,21 @@ export const PasswordGenerator: React.FC = () => {
             <input
               id="password-length-range"
               type="range"
-              min="4"
+              min="1"
               max="64"
               value={options.length}
               onChange={(e) => updateOption('length', parseInt(e.target.value))}
               className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
             />
             <div className="flex justify-between text-xs text-slate-500 mt-1">
-              <span>4</span>
+              <span>1</span>
               <span>64</span>
             </div>
+            {lengthTooShort && (
+              <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
+                密码长度至少需要 {minimumLength} 位，才能覆盖已选择的字符集。
+              </p>
+            )}
           </div>
 
           {/* 字符选项 */}
@@ -221,6 +325,43 @@ export const PasswordGenerator: React.FC = () => {
             </label>
           </div>
 
+          <div className="mb-6 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">安全说明</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  基于实际字符集大小估算，不是绝对强度判断
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                  {entropyReport.entropyBits} bits
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {entropyReport.securityLabel}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-sm">
+              <div className="rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400">字符集大小</p>
+                <p className="mt-1 font-mono text-slate-900 dark:text-white">{entropyReport.charsetSize}</p>
+              </div>
+              <div className="rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400">建议最短长度</p>
+                <p className="mt-1 font-mono text-slate-900 dark:text-white">{entropyReport.minimumLength}</p>
+              </div>
+              <div className="rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400">实际估算长度</p>
+                <p className="mt-1 font-mono text-slate-900 dark:text-white">{entropyReport.effectiveLength}</p>
+              </div>
+              <div className="rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400">建议</p>
+                <p className="mt-1 text-slate-900 dark:text-white text-sm leading-relaxed">{entropyReport.note}</p>
+              </div>
+            </div>
+          </div>
+
           {/* 数量和生成按钮 */}
           <div className="flex gap-4">
             <div className="w-32">
@@ -240,7 +381,9 @@ export const PasswordGenerator: React.FC = () => {
             <div className="flex-1 flex items-end">
               <button
                 onClick={generatePasswords}
-                className="w-full px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                disabled={lengthTooShort}
+                className="w-full px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                title={lengthTooShort ? `至少需要 ${minimumLength} 位` : t('password.generate')}
               >
                 <span className="material-symbols-outlined">password</span>
                 {t('password.generate')}
@@ -260,8 +403,8 @@ export const PasswordGenerator: React.FC = () => {
                 <button
                   onClick={copyAll}
                   className={`text-sm transition-colors ${
-                    copiedAll 
-                      ? 'text-emerald-600 dark:text-emerald-400' 
+                    copiedAll
+                      ? 'text-emerald-600 dark:text-emerald-400'
                       : 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-700'
                   }`}
                 >
@@ -295,8 +438,8 @@ export const PasswordGenerator: React.FC = () => {
                     <button
                       onClick={() => copyPassword(password, index)}
                       className={`text-sm transition-colors flex-shrink-0 ml-4 ${
-                        copiedIndex === index 
-                          ? 'text-emerald-600 dark:text-emerald-400' 
+                        copiedIndex === index
+                          ? 'text-emerald-600 dark:text-emerald-400'
                           : 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-700'
                       }`}
                     >

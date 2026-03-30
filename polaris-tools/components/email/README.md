@@ -165,7 +165,7 @@ All components follow the project's design system:
 
 ## Testing
 
-See `EmailComponents.example.tsx` for usage examples and visual testing.
+See `polaris-tools/examples/EmailComponents.example.tsx` for usage examples and visual testing.
 
 ## Future Enhancements
 

@@ -1,9 +1,9 @@
 /**
- * Email-related components
- * Shared components for email management features
+ * 邮件相关组件导出
  */
 
-export { EmailStatusBadge } from '../EmailStatusBadge';
-export { EmailVerificationBanner } from '../EmailVerificationBanner';
-export { EmailMetricsChart } from '../EmailMetricsChart';
-export { EmailTemplateEditor } from '../EmailTemplateEditor';
+export { EmailStatusBadge } from './EmailStatusBadge';
+export { EmailVerificationBanner } from './EmailVerificationBanner';
+export { EmailMetricsChart } from './EmailMetricsChart';
+export { EmailTemplateEditor } from './EmailTemplateEditor';
+export { EmailProviderSwitcher } from './EmailProviderSwitcher';

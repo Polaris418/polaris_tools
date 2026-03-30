@@ -6,6 +6,13 @@ import { SkeletonList } from '../components/SkeletonList';
 import { AppProvider } from '../context/AppContext';
 import App from '../App';
 
+const findProgressBar = (container: HTMLElement): HTMLElement | undefined => {
+  return Array.from(container.querySelectorAll('div')).find((element) => {
+    const width = (element as HTMLElement).style.width;
+    return width.endsWith('%');
+  }) as HTMLElement | undefined;
+};
+
 /**
  * Checkpoint 17: Loading State Optimization Verification
  * 
@@ -24,6 +31,7 @@ describe('Checkpoint 17: Loading State Optimization', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -56,16 +64,12 @@ describe('Checkpoint 17: Loading State Optimization', () => {
       expect(screen.queryByText(/加载时间较长/)).not.toBeInTheDocument();
       
       // Fast-forward time by 3 seconds
-      act(() => {
-        vi.advanceTimersByTime(3000);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3000);
       });
       
       // Timeout message should now be visible
-      await waitFor(() => {
-        expect(screen.getByText(/加载时间较长/)).toBeInTheDocument();
-      });
-      
-      vi.useRealTimers();
+      expect(screen.getByText(/加载时间较长/)).toBeInTheDocument();
     });
 
     it('should render progress bar when showProgress is true', () => {
@@ -74,9 +78,9 @@ describe('Checkpoint 17: Loading State Optimization', () => {
       );
       
       // Check for progress bar
-      const progressBar = container.querySelector('.bg-gradient-to-r');
+      const progressBar = findProgressBar(container);
       expect(progressBar).toBeInTheDocument();
-      expect(progressBar).toHaveStyle({ width: '50%' });
+      expect(progressBar?.style.width).toBe('50%');
       
       // Check for percentage text
       expect(screen.getByText('50%')).toBeInTheDocument();
@@ -87,22 +91,22 @@ describe('Checkpoint 17: Loading State Optimization', () => {
         <LoadingScreen showProgress={true} progress={0} />
       );
       
-      let progressBar = container.querySelector('.bg-gradient-to-r');
-      expect(progressBar).toHaveStyle({ width: '0%' });
+      let progressBar = findProgressBar(container);
+      expect(progressBar?.style.width).toBe('0%');
       
       // Test 100%
       rerender(<LoadingScreen showProgress={true} progress={100} />);
-      progressBar = container.querySelector('.bg-gradient-to-r');
-      expect(progressBar).toHaveStyle({ width: '100%' });
+      progressBar = findProgressBar(container);
+      expect(progressBar?.style.width).toBe('100%');
       
       // Test values beyond bounds (should clamp)
       rerender(<LoadingScreen showProgress={true} progress={150} />);
-      progressBar = container.querySelector('.bg-gradient-to-r');
-      expect(progressBar).toHaveStyle({ width: '100%' });
+      progressBar = findProgressBar(container);
+      expect(progressBar?.style.width).toBe('100%');
       
       rerender(<LoadingScreen showProgress={true} progress={-10} />);
-      progressBar = container.querySelector('.bg-gradient-to-r');
-      expect(progressBar).toHaveStyle({ width: '0%' });
+      progressBar = findProgressBar(container);
+      expect(progressBar?.style.width).toBe('0%');
     });
 
     it('should render error state with retry button', () => {
@@ -134,16 +138,12 @@ describe('Checkpoint 17: Loading State Optimization', () => {
       render(<LoadingScreen error="Something went wrong" />);
       
       // Fast-forward time by 3 seconds
-      act(() => {
-        vi.advanceTimersByTime(3000);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3000);
       });
       
       // Timeout message should NOT appear in error state
-      await waitFor(() => {
-        expect(screen.queryByText(/加载时间较长/)).not.toBeInTheDocument();
-      });
-      
-      vi.useRealTimers();
+      expect(screen.queryByText(/加载时间较长/)).not.toBeInTheDocument();
     });
 
     it('should have optimized animations with will-change property', () => {
@@ -250,6 +250,10 @@ describe('Checkpoint 17: Loading State Optimization', () => {
       if (loadingText) {
         expect(screen.getByText('Polaris Tools')).toBeInTheDocument();
       }
+
+      await waitFor(() => {
+        expect(screen.queryByText(/正在加载|正在初始化/)).not.toBeInTheDocument();
+      });
     });
 
     it('should transition from loading to content', async () => {
@@ -289,10 +293,9 @@ describe('Checkpoint 17: Loading State Optimization', () => {
         </AppProvider>
       );
       
-      // Wait for content to load
+      // 等待初始化完成，确认不再停留在加载态
       await waitFor(() => {
-        // Should eventually show dashboard content
-        expect(screen.queryByText('Polaris Tools')).toBeInTheDocument();
+        expect(screen.queryByText(/正在加载|正在初始化/)).not.toBeInTheDocument();
       }, { timeout: 3000 });
     });
   });

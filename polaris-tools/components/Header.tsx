@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
 import { useAppContext } from '../context/AppContext';
 import { apiClient } from '../api/client';
 import { guestUsageManager } from '../utils/guestUsageManager';
 
 export const Header: React.FC = () => {
-  const { theme, toggleTheme, language, toggleLanguage, t, page, navigate, isAuthenticated, isGuest, isAdmin, logout, guestUsage, showConfirm } = useAppContext();
+  const { theme, toggleTheme, language, toggleLanguage, t, page, isAuthenticated, isGuest, isAdmin, logout, guestUsage, showConfirm } = useAppContext();
+  const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
   const [remainingCount, setRemainingCount] = useState(0);
 
@@ -74,7 +76,7 @@ export const Header: React.FC = () => {
       type: 'info',
     }).then((confirmed) => {
       if (confirmed) {
-        navigate('login');
+        navigate('/login');
       }
     });
   };
@@ -83,7 +85,7 @@ export const Header: React.FC = () => {
     <header className="h-16 border-b border-slate-200 dark:border-border-dark bg-white/80 dark:bg-surface-dark/90 backdrop-blur-md flex items-center justify-between px-6 z-10 sticky top-0 transition-colors duration-300">
       {/* 左侧：面包屑导航 */}
       <div className="flex items-center gap-2 text-slate-500 dark:text-text-secondary text-sm font-medium">
-        <span onClick={() => navigate('dashboard')} className="hover:text-slate-900 dark:hover:text-white cursor-pointer transition-colors">{t('app.name')}</span>
+        <span onClick={() => navigate('/')} className="hover:text-slate-900 dark:hover:text-white cursor-pointer transition-colors">{t('app.name')}</span>
         <Icon name="chevron_right" className="text-[16px]" />
         <span className="text-slate-900 dark:text-white">{getPageTitle()}</span>
       </div>
@@ -115,7 +117,7 @@ export const Header: React.FC = () => {
         {isAdmin && (
           <>
             <button
-              onClick={() => navigate('admin')}
+              onClick={() => navigate('/admin')}
               className="flex items-center gap-2 h-9 px-3 py-1.5 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all hover:shadow-sm group"
               title={language === 'zh' ? '进入管理后台' : 'Admin Panel'}
             >
@@ -156,13 +158,13 @@ export const Header: React.FC = () => {
         {isGuest ? (
           <>
             <button 
-              onClick={() => navigate('login')}
+              onClick={() => navigate('/login')}
               className="flex items-center justify-center h-9 px-4 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
             >
               登录
             </button>
             <button 
-              onClick={() => navigate('register')}
+              onClick={() => navigate('/register')}
               className="flex items-center justify-center h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
             >
               注册
@@ -172,7 +174,7 @@ export const Header: React.FC = () => {
           <>
             {/* 登录用户：显示通知和退出 */}
             <button 
-              onClick={() => navigate('notifications')}
+              onClick={() => navigate('/notifications')}
               className={`relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
                 page === 'notifications' 
                   ? 'text-indigo-600 dark:text-white bg-indigo-50 dark:bg-indigo-500/20' 

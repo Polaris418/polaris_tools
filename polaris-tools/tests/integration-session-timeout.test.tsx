@@ -286,6 +286,7 @@ describe('Integration Test: Session Timeout', () => {
 
   describe('Edge Cases and Error Handling', () => {
     it('should handle logout failure gracefully', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const mockLoginResponse = {
         code: 200,
         message: 'Success',
@@ -328,6 +329,7 @@ describe('Integration Test: Session Timeout', () => {
 
       expect(result.current.isAuthenticated).toBe(false);
       expect(tokenManager.clear).toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalled();
     });
 
     it('should handle invalid showSessionTimeout in localStorage', () => {

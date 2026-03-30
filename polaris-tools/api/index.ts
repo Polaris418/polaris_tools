@@ -1,10 +1,6 @@
-/**
- * API module exports
- * 
- * This file provides a clean export interface for the API client
- */
-
 export { apiClient, ApiError } from './client';
+export { adminApi, adminClient } from './adminApi';
+
 export type {
   Result,
   PageResult,

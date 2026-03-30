@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "generate:api": "openapi-typescript http://localhost:8080/v3/api-docs -o ./types/api-generated.ts",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run"
@@ -14,6 +15,8 @@
   "dependencies": {
     "@dicebear/collection": "^9.3.1",
     "@dicebear/core": "^9.3.1",
+    "@harbour-enterprises/superdoc": "^1.23.0",
+    "@superdoc-dev/react": "^1.0.0-rc.2",
     "@types/markdown-it": "^14.1.2",
     "docx": "^9.5.1",
     "html-docx-js": "^0.3.1",
@@ -24,17 +27,25 @@
     "markdown-it-katex": "^2.0.3",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-router-dom": "^6.30.1",
     "recharts": "^3.7.0"
   },
   "devDependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/forms": "^0.5.10",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "@vitest/ui": "^4.0.18",
+    "autoprefixer": "^10.4.21",
     "fast-check": "^4.5.3",
     "happy-dom": "^20.3.7",
+    "openapi-typescript": "^7.10.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "vitest": "^4.0.18"

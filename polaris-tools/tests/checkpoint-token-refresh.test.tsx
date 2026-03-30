@@ -39,6 +39,14 @@ describe('Checkpoint 22: Token Auto-Refresh Verification', () => {
     
     // Reset all mocks
     vi.clearAllMocks();
+    const mockCurrentUser = {
+      id: 1,
+      username: 'testuser',
+      email: 'test@example.com',
+      planType: 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
     
     // Setup default tokenManager mocks
     vi.mocked(tokenManager.setToken).mockImplementation(() => {});
@@ -49,6 +57,12 @@ describe('Checkpoint 22: Token Auto-Refresh Verification', () => {
     vi.mocked(tokenManager.getLifetimePercentage).mockReturnValue(50);
     vi.mocked(tokenManager.shouldRefresh).mockReturnValue(false);
     vi.mocked(tokenManager.isExpired).mockReturnValue(false);
+    vi.mocked(apiClient.auth.getCurrentUser).mockResolvedValue({
+      code: 200,
+      message: 'Success',
+      timestamp: Date.now(),
+      data: mockCurrentUser,
+    });
   });
 
   afterEach(() => {
@@ -583,6 +597,7 @@ describe('Checkpoint 22: Token Auto-Refresh Verification', () => {
     });
 
     it('should handle logout even when API fails', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       // Arrange
       localStorage.setItem('token', 'valid-token');
       localStorage.setItem('refreshToken', 'valid-refresh-token');
@@ -603,6 +618,7 @@ describe('Checkpoint 22: Token Auto-Refresh Verification', () => {
       // Assert: Should still clear state even if logout API fails
       expect(tokenManager.clear).toHaveBeenCalled();
       expect(result.current.isAuthenticated).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalled();
     });
 
     it('should handle concurrent refresh attempts', async () => {
@@ -628,6 +644,7 @@ describe('Checkpoint 22: Token Auto-Refresh Verification', () => {
     });
 
     it('should clear state on logout API failure', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       // Arrange
       localStorage.setItem('token', 'valid-token');
       localStorage.setItem('refreshToken', 'valid-refresh-token');
@@ -648,6 +665,7 @@ describe('Checkpoint 22: Token Auto-Refresh Verification', () => {
       // Assert: Should still clear state
       expect(tokenManager.clear).toHaveBeenCalled();
       expect(result.current.isAuthenticated).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalled();
     });
   });
 });

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { apiClient } from '../api/client';
 import { Icon } from '../components/Icon';
@@ -11,7 +12,8 @@ import type { Tool, ToolResponse } from '../types';
  * 展示用户的完整工具使用历史记录
  */
 export const History: React.FC = () => {
-  const { t, language, navigate, isAuthenticated } = useAppContext();
+  const { t, language, isAuthenticated } = useAppContext();
+  const navigate = useNavigate();
   
   const [tools, setTools] = useState<ToolResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +137,7 @@ export const History: React.FC = () => {
                 {t('history.login_required_desc')}
               </p>
               <button
-                onClick={() => navigate('login')}
+                onClick={() => navigate('/login')}
                 className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors"
               >
                 {t('auth.submit.login')}
@@ -154,7 +156,7 @@ export const History: React.FC = () => {
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-2">
             <button
-              onClick={() => navigate('dashboard')}
+              onClick={() => navigate('/')}
               className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
               title={t('tool.layout.back')}
             >
@@ -219,7 +221,7 @@ export const History: React.FC = () => {
                 {t('history.empty_desc')}
               </p>
               <button
-                onClick={() => navigate('dashboard')}
+                onClick={() => navigate('/')}
                 className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors"
               >
                 {t('history.explore_tools')}

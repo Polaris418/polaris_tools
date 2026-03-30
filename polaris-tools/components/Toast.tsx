@@ -7,12 +7,23 @@ interface ToastProps {
   type: ToastType;
   onClose: () => void;
   duration?: number;
+  actionLabel?: string;
+  actionAriaLabel?: string;
+  onAction?: () => void;
 }
 
 /**
  * Toast 提示组件
  */
-export const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration = 3000 }) => {
+export const Toast: React.FC<ToastProps> = ({
+  message,
+  type,
+  onClose,
+  duration = 3000,
+  actionLabel,
+  actionAriaLabel,
+  onAction,
+}) => {
   useEffect(() => {
     if (duration > 0) {
       const timer = setTimeout(onClose, duration);
@@ -46,11 +57,27 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration =
     }
   };
 
+  const handleAction = () => {
+    onAction?.();
+    onClose();
+  };
+
   return (
     <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${getColors()} animate-in slide-in-from-top-5 fade-in duration-300`}>
       <span className="material-symbols-outlined text-xl">{getIcon()}</span>
       <span className="text-sm font-medium flex-1">{message}</span>
+      {actionLabel && onAction && (
+        <button
+          type="button"
+          onClick={handleAction}
+          aria-label={actionAriaLabel ?? actionLabel}
+          className="shrink-0 rounded-md border border-current/20 px-2.5 py-1 text-xs font-semibold hover:bg-white/40 dark:hover:bg-slate-900/20 transition-colors"
+        >
+          {actionLabel}
+        </button>
+      )}
       <button
+        type="button"
         onClick={onClose}
         className="text-current opacity-60 hover:opacity-100 transition-opacity"
       >
@@ -61,7 +88,14 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration =
 };
 
 interface ToastContainerProps {
-  toasts: Array<{ id: string; message: string; type: ToastType }>;
+  toasts: Array<{
+    id: string;
+    message: string;
+    type: ToastType;
+    actionLabel?: string;
+    actionAriaLabel?: string;
+    onAction?: () => void;
+  }>;
   onRemove: (id: string) => void;
 }
 
@@ -76,6 +110,9 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemove
           key={toast.id}
           message={toast.message}
           type={toast.type}
+          actionLabel={toast.actionLabel}
+          actionAriaLabel={toast.actionAriaLabel}
+          onAction={toast.onAction}
           onClose={() => onRemove(toast.id)}
         />
       ))}

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
 import { CategoryCount, User } from '../types';
 import { useAppContext } from '../context/AppContext';
 import { useCategories } from '../hooks/useCategories';
+import { apiClient } from '../api/client';
 
 interface SidebarProps {
   categories: CategoryCount[];
@@ -20,7 +22,8 @@ interface MenuItem {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ categories: staticCategories, user }) => {
-  const { t, language, navigate, page, setCategoryPage, currentCategoryId, isGuest, promptLogin, setToolPage } = useAppContext();
+  const { t, language, page, setCategoryPage, currentCategoryId, isGuest, promptLogin, setToolPage } = useAppContext();
+  const navigate = useNavigate();
   
   // Sidebar collapse state
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -47,6 +50,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ categories: staticCategories, 
     { id: 'dashboard', label: t('nav.dashboard'), icon: 'dashboard', page: 'dashboard', guestAllowed: true },
     { id: 'favorites', label: t('nav.favorites'), icon: 'star', page: 'favorites', guestAllowed: false, filled: true },
   ];
+  const pagePathMap: Record<string, string> = {
+    dashboard: '/',
+    favorites: '/favorites',
+    settings: '/settings',
+    profile: '/profile',
+    admin: '/admin',
+    login: '/login',
+  };
   
   // 根据游客模式过滤菜单项
   const visibleMenuItems = isGuest 
@@ -66,8 +77,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ categories: staticCategories, 
       }
 
       try {
-        // Import apiClient dynamically to avoid circular dependencies
-        const { apiClient } = await import('../api/client');
         const result = await apiClient.tools.list({
           page: 1,
           size: 10,
@@ -150,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ categories: staticCategories, 
   return (
     <aside className={`bg-white dark:bg-surface-dark border-r border-slate-200 dark:border-border-dark flex flex-col flex-shrink-0 h-full z-20 transition-all duration-300 ${isCollapsed ? 'w-[72px]' : 'w-[280px]'}`}>
       {/* Brand */}
-      <div className={`px-6 py-6 flex items-center gap-3 cursor-pointer ${isCollapsed ? 'justify-center' : ''}`} onClick={() => navigate('dashboard')}>
+      <div className={`px-6 py-6 flex items-center gap-3 cursor-pointer ${isCollapsed ? 'justify-center' : ''}`} onClick={() => navigate('/')}>
         <div className="flex items-center justify-center size-8 text-primary dark:text-white flex-shrink-0">
           <svg className="w-full h-full" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"></path>
@@ -254,7 +263,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ categories: staticCategories, 
               </div>
             </div>
             <button 
-              onClick={() => navigate('login')}
+              onClick={() => navigate('/login')}
               className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm hover:shadow-md"
             >
               {language === 'zh' ? '立即登录' : 'Sign In'}
@@ -270,7 +279,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ categories: staticCategories, 
                 if (!item.guestAllowed && isGuest) {
                   promptLogin(`访问"${item.label}"功能需要登录`);
                 } else {
-                  navigate(item.page as Page);
+                  navigate(pagePathMap[item.page] ?? '/');
                 }
               }}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors cursor-pointer group ${isActive(item.page) ? 'bg-slate-100 dark:bg-[#1e293b]' : 'hover:bg-slate-50 dark:hover:bg-[#1e293b]'} ${isCollapsed ? 'justify-center' : ''}`}
@@ -388,7 +397,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ categories: staticCategories, 
         {/* Admin Panel Link - Only show for admin users */}
         {user && user.planType === 999 && (
           <a 
-            onClick={() => navigate('admin')}
+            onClick={() => navigate('/admin')}
             className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors cursor-pointer mb-1 ${
               isActive('admin') 
                 ? 'bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800' 
@@ -419,7 +428,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ categories: staticCategories, 
         {/* Settings - Only show for logged-in users */}
         {!isGuest && (
           <a 
-            onClick={() => navigate('settings')}
+            onClick={() => navigate('/settings')}
             className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors cursor-pointer ${isActive('settings') ? 'bg-slate-100 dark:bg-[#1e293b]' : 'hover:bg-slate-50 dark:hover:bg-[#1e293b]'} ${isCollapsed ? 'justify-center' : ''}`}
             title={isCollapsed ? t('nav.settings') : ''}
           >
@@ -433,7 +442,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ categories: staticCategories, 
         {/* User Profile - Only show for logged-in users */}
         {!isGuest && user && (
           <div 
-            onClick={() => navigate('profile')}
+            onClick={() => navigate('/profile')}
             className={`mt-2 flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-[#1e293b] cursor-pointer transition-colors ${isCollapsed ? 'justify-center' : ''}`}
             title={isCollapsed ? user.name : ''}
           >

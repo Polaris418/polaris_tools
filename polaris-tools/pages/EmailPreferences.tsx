@@ -18,7 +18,7 @@ interface EmailHistory {
 }
 
 export const EmailPreferences: React.FC = () => {
-  const { user, showToast, t, navigate } = useAppContext();
+  const { user, showToast, t } = useAppContext();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState<Record<string, boolean>>({
@@ -29,13 +29,6 @@ export const EmailPreferences: React.FC = () => {
   const [history, setHistory] = useState<EmailHistory[]>([]);
   const [emailVerified, setEmailVerified] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!user) {
-      navigate('login');
-    }
-  }, [user, navigate]);
 
   // Load preferences
   useEffect(() => {

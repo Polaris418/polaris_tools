@@ -49,7 +49,6 @@ export const enUS = {
   'common.collapse': 'Collapse',
   'common.expand': 'Expand',
   'common.back_home': 'Back to Home',
-  'common.back': 'Back',
 
   // Privacy
   'privacy.title': 'Privacy Policy',
@@ -453,8 +452,6 @@ export const enUS = {
   'admin.templates.type.SYSTEM_MAINTENANCE': 'System Maintenance',
 
   // Admin Emails
-  'admin.emails.title': 'Email Management',
-  'admin.emails.subtitle': 'View and manage system email sending logs',
   'admin.emails.action.export': 'Export CSV',
   'admin.emails.action.cleanup': 'Cleanup Old Logs',
   'admin.emails.action.view': 'View Details',
@@ -524,8 +521,6 @@ export const enUS = {
   'admin.emails.toast.export_success': 'CSV exported successfully',
   'admin.emails.toast.export_failed': 'Export failed',
   'admin.emails.status.success': 'Success',
-  'admin.emails.status.failed': 'Failed',
-  'admin.emails.status.pending': 'Pending',
 
   // Admin Dashboard
   'admin.dashboard.title': 'Dashboard',
@@ -1204,8 +1199,6 @@ export const enUS = {
   'time.weeks_ago': '{weeks} weeks ago',
   'time.months_ago': '{months} months ago',
   'time.years_ago': '{years} years ago',
-  'time.today': 'Today',
-  'time.yesterday': 'Yesterday',
   'time.tomorrow': 'Tomorrow',
   'time.this_week': 'This week',
   'time.last_week': 'Last week',

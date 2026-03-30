@@ -41,6 +41,20 @@ describe('Checkpoint: Guest Mode Functionality Verification', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    // 每个用例恢复默认模拟返回，避免前序用例污染后续断言
+    vi.mocked(guestUsageManager.getUsage).mockReturnValue({
+      count: 0,
+      limit: 10,
+      lastResetDate: new Date().toISOString(),
+    });
+    vi.mocked(guestUsageManager.incrementUsage).mockReturnValue({
+      count: 1,
+      limit: 10,
+      lastResetDate: new Date().toISOString(),
+    });
+    vi.mocked(guestUsageManager.isLimitReached).mockReturnValue(false);
+    vi.mocked(guestUsageManager.shouldShowWarning).mockReturnValue(false);
+    vi.mocked(guestUsageManager.getRemainingCount).mockReturnValue(10);
   });
 
   describe('1. 确保游客可以访问基础功能', () => {

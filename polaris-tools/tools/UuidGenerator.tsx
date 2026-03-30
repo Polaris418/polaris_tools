@@ -2,7 +2,74 @@ import React, { useState, useCallback } from 'react';
 import { ToolLayout } from '../components/ToolLayout';
 import { useAppContext } from '../context/AppContext';
 
-type UuidVersion = 'v4' | 'v1-like';
+type UuidVersion = 'v4' | 'v7' | 'v1-like';
+
+export interface ParsedUuidInfo {
+  normalized: string;
+  valid: boolean;
+  version: string;
+  variant: string;
+}
+
+const getRandomBytes = (size: number) => {
+  const bytes = new Uint8Array(size);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+    return bytes;
+  }
+
+  for (let i = 0; i < size; i += 1) {
+    bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return bytes;
+};
+
+const bytesToHex = (bytes: Uint8Array) => Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+
+const bytesToUuid = (bytes: Uint8Array) => {
+  const hex = bytesToHex(bytes);
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20, 32),
+  ].join('-');
+};
+
+export const parseUuidInfo = (value: string): ParsedUuidInfo => {
+  const normalized = value.trim().toLowerCase();
+  const match = normalized.match(
+    /^([0-9a-f]{8})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{12})$/
+  );
+
+  if (!match) {
+    return {
+      normalized,
+      valid: false,
+      version: '无效',
+      variant: '无效',
+    };
+  }
+
+  const versionNibble = match[3][0];
+  const variantNibble = parseInt(match[4][0], 16);
+  const variant =
+    (variantNibble & 0b1000) === 0
+      ? 'NCS'
+      : (variantNibble & 0b1100) === 0b1000
+        ? 'RFC 4122'
+        : (variantNibble & 0b1110) === 0b1100
+          ? 'Microsoft'
+          : 'Future';
+
+  return {
+    normalized,
+    valid: true,
+    version: `v${parseInt(versionNibble, 16)}`,
+    variant,
+  };
+};
 
 /**
  * UUID 生成器工具
@@ -17,30 +84,49 @@ export const UuidGenerator: React.FC = () => {
   const [hasRecordedUsage, setHasRecordedUsage] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
+  const [inspectInput, setInspectInput] = useState('');
 
   // 生成 UUID v4 (随机)
   const generateUuidV4 = (): string => {
-    // 使用 crypto.randomUUID() 如果可用
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       return crypto.randomUUID();
     }
-    // 回退方案
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
+
+    const bytes = getRandomBytes(16);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    return bytesToUuid(bytes);
+  };
+
+  // 生成 UUID v7 (时间有序)
+  const generateUuidV7 = (): string => {
+    const bytes = getRandomBytes(16);
+    const timestamp = BigInt(Date.now());
+
+    bytes[0] = Number((timestamp >> 40n) & 0xffn);
+    bytes[1] = Number((timestamp >> 32n) & 0xffn);
+    bytes[2] = Number((timestamp >> 24n) & 0xffn);
+    bytes[3] = Number((timestamp >> 16n) & 0xffn);
+    bytes[4] = Number((timestamp >> 8n) & 0xffn);
+    bytes[5] = Number(timestamp & 0xffn);
+    bytes[6] = (bytes[6] & 0x0f) | 0x70;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    return bytesToUuid(bytes);
   };
 
   // 生成类 v1 UUID (基于时间戳)
   const generateUuidV1Like = (): string => {
-    const now = Date.now();
-    const timeHex = now.toString(16).padStart(12, '0');
-    const randomPart = Array.from({ length: 4 }, () => 
-      Math.floor(Math.random() * 65536).toString(16).padStart(4, '0')
-    ).join('');
-    
-    return `${timeHex.slice(0, 8)}-${timeHex.slice(8, 12)}-1${randomPart.slice(0, 3)}-${randomPart.slice(3, 7)}-${randomPart.slice(7, 19)}`;
+    const timestamp = Date.now().toString(16).padStart(12, '0');
+    const randomHex = bytesToHex(getRandomBytes(10));
+
+    return [
+      timestamp.slice(0, 8),
+      timestamp.slice(8, 12),
+      `1${randomHex.slice(0, 3)}`,
+      randomHex.slice(3, 7),
+      randomHex.slice(7, 19),
+    ].join('-');
   };
 
   // 格式化 UUID
@@ -63,7 +149,7 @@ export const UuidGenerator: React.FC = () => {
       setHasRecordedUsage(true);
     }
 
-    const generator = version === 'v4' ? generateUuidV4 : generateUuidV1Like;
+    const generator = version === 'v4' ? generateUuidV4 : version === 'v7' ? generateUuidV7 : generateUuidV1Like;
     const newUuids = Array.from({ length: count }, () => formatUuid(generator()));
     setUuids(newUuids);
   };
@@ -91,6 +177,8 @@ export const UuidGenerator: React.FC = () => {
     setCopiedAll(false);
   };
 
+  const parsedInfo = inspectInput ? parseUuidInfo(inspectInput) : null;
+
   return (
     <ToolLayout toolId="uuid-generator">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -114,6 +202,16 @@ export const UuidGenerator: React.FC = () => {
                   UUID v4 ({t('uuid.random')})
                 </button>
                 <button
+                  onClick={() => setVersion('v7')}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    version === 'v7'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                  }`}
+                >
+                  UUID v7 ({t('uuid.time_based')})
+                </button>
+                <button
                   onClick={() => setVersion('v1-like')}
                   className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     version === 'v1-like'
@@ -121,7 +219,7 @@ export const UuidGenerator: React.FC = () => {
                       : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                   }`}
                 >
-                  v1-like ({t('uuid.time_based')})
+                  v1-like
                 </button>
               </div>
             </div>
@@ -188,8 +286,8 @@ export const UuidGenerator: React.FC = () => {
                 <button
                   onClick={copyAll}
                   className={`text-sm transition-colors ${
-                    copiedAll 
-                      ? 'text-emerald-600 dark:text-emerald-400' 
+                    copiedAll
+                      ? 'text-emerald-600 dark:text-emerald-400'
                       : 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300'
                   }`}
                 >
@@ -213,8 +311,8 @@ export const UuidGenerator: React.FC = () => {
                   <button
                     onClick={() => copyUuid(uuid, index)}
                     className={`text-sm transition-colors ${
-                      copiedIndex === index 
-                        ? 'text-emerald-600 dark:text-emerald-400' 
+                      copiedIndex === index
+                        ? 'text-emerald-600 dark:text-emerald-400'
                         : 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300'
                     }`}
                   >
@@ -225,6 +323,39 @@ export const UuidGenerator: React.FC = () => {
             </div>
           </div>
         )}
+
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+            <h3 className="font-semibold text-slate-900 dark:text-white">UUID 校验与解析</h3>
+          </div>
+          <div className="p-4 space-y-4">
+            <input
+              type="text"
+              value={inspectInput}
+              onChange={(e) => setInspectInput(e.target.value)}
+              placeholder="粘贴一个 UUID 进行校验"
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {parsedInfo && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-900">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">状态</p>
+                  <p className={`mt-1 font-medium ${parsedInfo.valid ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {parsedInfo.valid ? '有效 UUID' : '无效 UUID'}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-900">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">版本</p>
+                  <p className="mt-1 font-medium text-slate-900 dark:text-white">{parsedInfo.version}</p>
+                </div>
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-900">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">变体</p>
+                  <p className="mt-1 font-medium text-slate-900 dark:text-white">{parsedInfo.variant}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* 空状态 */}
         {uuids.length === 0 && (

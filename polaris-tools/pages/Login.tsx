@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { Icon } from '../components/Icon';
 import { VerificationCodeInput } from '../components/VerificationCodeInput';
@@ -9,7 +10,10 @@ type FormMode = 'login' | 'register';
 type LoginMethod = 'password' | 'code';
 
 export const Login: React.FC = () => {
-  const { t, login, navigate, language, toggleLanguage } = useAppContext();
+  const { t, login, language, toggleLanguage } = useAppContext();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const returnUrl = (location.state as { returnUrl?: string } | null)?.returnUrl;
   
   const [mode, setMode] = useState<FormMode>('login');
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('password');
@@ -83,7 +87,6 @@ export const Login: React.FC = () => {
     
     try {
       // First, try to login to check if user is admin
-      const { apiClient } = await import('../api/client');
       const result = await apiClient.auth.login(loginForm);
       
       // Check if user is admin (planType = 999)
@@ -95,7 +98,7 @@ export const Login: React.FC = () => {
         setLoading(false);
       } else {
         // Regular user - login directly to dashboard
-        await login(loginForm, false, rememberMe);
+        await login(loginForm, false, rememberMe, returnUrl);
       }
     } catch (err: any) {
       setError(err.message || t('auth.error.login_failed'));
@@ -242,7 +245,12 @@ export const Login: React.FC = () => {
     setShowAdminChoice(false);
     
     try {
-      await login(pendingCredentials, navigateToAdmin, rememberMe);
+      await login(
+        pendingCredentials,
+        navigateToAdmin,
+        rememberMe,
+        navigateToAdmin ? undefined : returnUrl
+      );
     } catch (err: any) {
       setError(err.message || t('auth.error.login_failed'));
     } finally {
@@ -273,7 +281,6 @@ export const Login: React.FC = () => {
     setLoading(true);
     
     try {
-      const { apiClient } = await import('../api/client');
       await apiClient.auth.register(registerForm);
       
       // After successful registration, automatically log in
@@ -291,7 +298,7 @@ export const Login: React.FC = () => {
   const switchMode = (newMode: FormMode) => {
     // 如果切换到注册模式，直接跳转到独立的注册页面
     if (newMode === 'register') {
-      navigate('register');
+      navigate('/register');
       return;
     }
     
@@ -471,7 +478,7 @@ export const Login: React.FC = () => {
                             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">{t('auth.password')}</label>
                             <button
                               type="button"
-                              onClick={() => navigate('reset-password')}
+                              onClick={() => navigate('/reset-password')}
                               className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
                             >
                               {t('auth.forgot')}
@@ -728,7 +735,7 @@ export const Login: React.FC = () => {
             <div className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
                 {mode === 'login' ? (
                   <>
-                    {t('auth.no_account')} <button onClick={() => navigate('register')} className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">{t('auth.link.signup')}</button>
+                    {t('auth.no_account')} <button onClick={() => navigate('/register')} className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">{t('auth.link.signup')}</button>
                   </>
                 ) : (
                   <>

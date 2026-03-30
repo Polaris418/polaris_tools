@@ -6,16 +6,16 @@
     <!-- Content Security Policy for XSS Protection -->
     <meta http-equiv="Content-Security-Policy" 
           content="default-src 'self'; 
-                   script-src 'self' https://cdn.tailwindcss.com https://esm.sh 'unsafe-inline'; 
+                   script-src 'self' 'unsafe-inline'; 
                    style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; 
                    font-src 'self' https://fonts.gstatic.com; 
                    img-src 'self' data: https: blob:; 
-                   connect-src 'self' http://localhost:8080 https://raw.githubusercontent.com https://cdn.jsdelivr.net https://unpkg.com ws://localhost:*;">
+                   connect-src 'self' http://localhost:8080 https://polaristools.online https://raw.githubusercontent.com https://cdn.jsdelivr.net https://unpkg.com ws://localhost:* wss://localhost:*;">
     <!-- Security Headers -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-XSS-Protection" content="1; mode=block">
     <title>Polaris Tools - Brand Identity Hub</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <style>
@@ -41,40 +41,6 @@
             background: #475569;
         }
     </style>
-    <script>
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              "primary": "#137fec",
-              "background-light": "#f8fafc", 
-              "background-dark": "#020617",
-              "surface-dark": "#0f172a",
-              "surface-light": "#ffffff",
-              "border-dark": "#1e293b",
-              "text-secondary": "#94a3b8"
-            },
-            fontFamily: {
-              "display": ["Inter", "sans-serif"]
-            },
-            borderRadius: {
-                "lg": "0.5rem", 
-                "xl": "0.75rem"
-            },
-          },
-        },
-      }
-    </script>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
-  }
-}
-</script>
 <link rel="stylesheet" href="/index.css">
 </head>
   <body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white h-screen flex overflow-hidden">

@@ -3,10 +3,23 @@
  * 支持 Markdown 到 DOCX/PDF/HTML 的转换
  */
 
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, UnderlineType, Bookmark, InternalHyperlink } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, UnderlineType, Bookmark, InternalHyperlink, Tab, TabStopType, LeaderType, TabStopPosition } from 'docx';
 import MarkdownIt from 'markdown-it';
 import markdownItKatex from 'markdown-it-katex';
 import { jsPDF } from 'jspdf';
+import { DEFAULT_BASE_TEMPLATE, TEMPLATE_DEFAULTS } from '../tools/md2word/formatting/defaults';
+import { buildScopedBlockCss, resolveScopedFormatConfig } from '../tools/md2word/formatting/applyScopedPatches';
+import { parseMarkdownBlocks } from '../tools/md2word/formatting/parseMarkdownBlocks';
+import {
+  buildDocxSelectionStyleMap,
+  buildSelectionCss,
+  getSelectionEndMarker,
+  getSelectionStartMarker,
+  injectSelectionMarkers,
+  replaceSelectionMarkersWithHtml,
+  resolveAppliedSelectionPatches,
+} from '../tools/md2word/formatting/selectionFormatting';
+import type { BaseTemplateId, ResolvedFormatConfig, ScopedFormatPatch } from '../tools/md2word/formatting/types';
 
 // 初始化 Markdown 解析器
 const md = new MarkdownIt({
@@ -15,6 +28,124 @@ const md = new MarkdownIt({
   typographer: true,
 })
   .use(markdownItKatex, { throwOnError: false, errorColor: '#cc0000' });
+
+const SUPERDOC_PREVIEW_PAGE_BREAK = '[[SUPERDOC_PAGE_BREAK]]';
+const SUPERDOC_PREVIEW_TOC_TITLE = '[[SUPERDOC_TOC_TITLE:';
+const SUPERDOC_PREVIEW_TOC_ITEM = '[[SUPERDOC_TOC_ITEM:';
+
+const parseSuperDocPreviewTocTitle = (line: string): string | null => {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith(SUPERDOC_PREVIEW_TOC_TITLE) || !trimmed.endsWith(']]')) {
+    return null;
+  }
+
+  return trimmed.slice(SUPERDOC_PREVIEW_TOC_TITLE.length, -2).trim() || null;
+};
+
+const parseSuperDocPreviewTocItem = (
+  line: string
+): { level: number; label: string; pageNumber: string } | null => {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith(SUPERDOC_PREVIEW_TOC_ITEM) || !trimmed.endsWith(']]')) {
+    return null;
+  }
+
+  const rawPayload = trimmed.slice(SUPERDOC_PREVIEW_TOC_ITEM.length, -2);
+  const [levelText, label, pageNumber] = rawPayload.split('|');
+  const level = Number.parseInt(levelText, 10);
+  if (!Number.isFinite(level) || !label || !pageNumber) {
+    return null;
+  }
+
+  return {
+    level: Math.max(0, Math.min(level, 2)),
+    label: label.trim(),
+    pageNumber: pageNumber.trim(),
+  };
+};
+
+const buildPreviewTocLeader = (label: string, level: number): string =>
+  '.'.repeat(Math.max(10, 34 - Math.min(label.length, 18) - level * 6));
+
+const stripHeadingMarkdown = (value: string): string => value.replace(/^#{1,6}\s+/, '').trim();
+
+const getHeadingBookmarkId = (blockId: string): string => `toc-${blockId}`;
+
+const buildVisibleDocxTocParagraphs = (
+  headingBlocks: ReturnType<typeof parseMarkdownBlocks>,
+  config: TemplateConfig
+): Paragraph[] => {
+  const filteredHeadingBlocks = headingBlocks.filter((block) =>
+    ['heading1', 'heading2', 'heading3'].includes(block.blockType)
+  );
+
+  if (filteredHeadingBlocks.length === 0) {
+    return [];
+  }
+
+  const paragraphs: Paragraph[] = [
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: '目录',
+          bold: true,
+          size: 32,
+          color: '000000',
+          font: config.styles.body.font,
+        }),
+      ],
+      spacing: { before: 120, after: 220 },
+      alignment: AlignmentType.CENTER,
+    }),
+  ];
+
+  filteredHeadingBlocks.forEach((block, index) => {
+    const level = block.blockType === 'heading1' ? 0 : block.blockType === 'heading2' ? 1 : 2;
+    const indentTwips = level === 0 ? 0 : level === 1 ? 420 : 840;
+    const tocFontSize = level === 0 ? 22 : level === 1 ? 21 : 20;
+    const pageNumber = Math.max(2, Math.ceil((index + 1) / 3) + 1);
+    const label = stripHeadingMarkdown(block.text);
+
+    paragraphs.push(
+      new Paragraph({
+        children: [
+          new InternalHyperlink({
+            anchor: getHeadingBookmarkId(block.blockId),
+            children: [
+              new TextRun({
+                text: label,
+                size: tocFontSize,
+                color: '000000',
+                font: config.styles.body.font,
+              }),
+            ],
+          }),
+          new Tab(),
+          new TextRun({
+            text: String(pageNumber),
+            size: tocFontSize,
+            color: '000000',
+            font: config.styles.body.font,
+          }),
+        ],
+        indent: {
+          left: indentTwips,
+        },
+        tabStops: [
+          {
+            type: TabStopType.RIGHT,
+            position: TabStopPosition.MAX,
+            leader: LeaderType.DOT,
+          },
+        ],
+        spacing: { before: 0, after: level === 0 ? 90 : 70, line: 360 },
+      })
+    );
+  });
+
+  paragraphs.push(new Paragraph({ text: '', pageBreakBefore: true }));
+  return paragraphs;
+};
 
 /**
  * 模板配置
@@ -28,6 +159,40 @@ interface TemplateConfig {
     body: { fontSize: number; color: string; lineSpacing?: number; font?: string };
     code: { fontSize: number; font: string; background?: string };
   };
+}
+
+interface InlineRunStyle {
+  font: string;
+  size: number;
+  color: string;
+  bold?: boolean;
+  italics?: boolean;
+  background?: string;
+}
+
+export type DocxExportStrategy = 'superdoc' | 'native-docx' | 'html-docx';
+
+export interface SuperDocDocxExportAdapter {
+  exportDocx?: (args: {
+    markdown: string;
+    config: ResolvedFormatConfig;
+    scopedPatches: ScopedFormatPatch[];
+  }) => Promise<Blob | null | undefined>;
+}
+
+export interface DocxExportWithPriorityOptions {
+  preferSuperDoc?: boolean;
+  superDocAdapter?: SuperDocDocxExportAdapter | null;
+  nativeDocxExport?: (args: {
+    markdown: string;
+    config: ResolvedFormatConfig;
+    scopedPatches: ScopedFormatPatch[];
+  }) => Promise<Blob>;
+  htmlDocxExport?: (args: {
+    markdown: string;
+    config: ResolvedFormatConfig;
+    scopedPatches: ScopedFormatPatch[];
+  }) => Blob;
 }
 
 const TEMPLATES: Record<string, TemplateConfig> = {
@@ -73,124 +238,292 @@ const TEMPLATES: Record<string, TemplateConfig> = {
   },
 };
 
+type ExportConfigInput = BaseTemplateId | ResolvedFormatConfig;
+
+const normalizeExportConfig = (config?: ExportConfigInput): ResolvedFormatConfig => {
+  if (!config) {
+    return TEMPLATE_DEFAULTS[DEFAULT_BASE_TEMPLATE];
+  }
+
+  if (typeof config === 'string') {
+    return TEMPLATE_DEFAULTS[config] ?? TEMPLATE_DEFAULTS[DEFAULT_BASE_TEMPLATE];
+  }
+
+  return config;
+};
+
+export async function exportDocxWithPriority(
+  markdown: string,
+  configInput: ExportConfigInput = DEFAULT_BASE_TEMPLATE,
+  scopedPatches: ScopedFormatPatch[] = [],
+  options: DocxExportWithPriorityOptions = {}
+): Promise<{ blob: Blob; strategy: DocxExportStrategy }> {
+  const exportOrder: DocxExportStrategy[] = options.preferSuperDoc
+    ? options.htmlDocxExport
+      ? ['superdoc', 'native-docx', 'html-docx']
+      : ['superdoc', 'native-docx']
+    : options.htmlDocxExport
+      ? ['native-docx', 'html-docx']
+      : ['native-docx'];
+  let lastError: unknown = null;
+
+  for (const strategy of exportOrder) {
+    try {
+      if (strategy === 'superdoc') {
+        const blob = await options.superDocAdapter?.exportDocx?.({
+          markdown,
+          config: normalizeExportConfig(configInput),
+          scopedPatches,
+        });
+
+        if (blob) {
+          return { blob, strategy };
+        }
+
+        continue;
+      }
+
+      if (strategy === 'native-docx') {
+        const blob = options.nativeDocxExport
+          ? await options.nativeDocxExport({
+              markdown,
+              config: normalizeExportConfig(configInput),
+              scopedPatches,
+            })
+          : await markdownToDocx(markdown, configInput, scopedPatches);
+        return { blob, strategy };
+      }
+
+      const htmlDocxExport = options.htmlDocxExport;
+      if (htmlDocxExport) {
+        return {
+          blob: htmlDocxExport({
+            markdown,
+            config: normalizeExportConfig(configInput),
+            scopedPatches,
+          }),
+          strategy,
+        };
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('DOCX export failed');
+}
+
+const toLegacyTemplateConfig = (config: ResolvedFormatConfig): TemplateConfig => ({
+  name: config.templateId,
+  styles: {
+    h1: {
+      fontSize: config.h1.fontSizePt * 2,
+      bold: config.h1.bold,
+      color: config.h1.color.replace('#', ''),
+      alignment: config.h1.align,
+      font: config.h1.fontFamily.split(',')[0].trim(),
+    },
+    h2: {
+      fontSize: config.h2.fontSizePt * 2,
+      bold: config.h2.bold,
+      color: config.h2.color.replace('#', ''),
+      font: config.h2.fontFamily.split(',')[0].trim(),
+    },
+    h3: {
+      fontSize: config.h3.fontSizePt * 2,
+      bold: config.h3.bold,
+      color: config.h3.color.replace('#', ''),
+      font: config.h3.fontFamily.split(',')[0].trim(),
+    },
+    body: {
+      fontSize: config.body.fontSizePt * 2,
+      color: config.body.color.replace('#', ''),
+      lineSpacing: Math.round(config.body.lineSpacing * 240),
+      font: config.body.fontFamily.split(',')[0].trim(),
+    },
+    code: {
+      fontSize: config.code.fontSizePt * 2,
+      font: config.code.fontFamily.split(',')[0].trim(),
+      background: config.code.backgroundColor.replace('#', ''),
+    },
+  },
+});
+
+const findBlockByLine = (markdown: string, line: number) =>
+  parseMarkdownBlocks(markdown).find((block) => line >= block.lineStart && line <= block.lineEnd);
+
+const annotateHtmlWithBlocks = (htmlContent: string, markdown: string): string => {
+  if (typeof DOMParser === 'undefined') {
+    return htmlContent;
+  }
+
+  const blocks = parseMarkdownBlocks(markdown).filter((block) =>
+    ['heading1', 'heading2', 'heading3', 'paragraph', 'blockquote', 'code', 'list', 'hr'].includes(block.blockType)
+  );
+  const parser = new DOMParser();
+  const documentNode = parser.parseFromString(`<div id="root">${htmlContent}</div>`, 'text/html');
+  const root = documentNode.getElementById('root');
+
+  if (!root) {
+    return htmlContent;
+  }
+
+  const tagToBlockType: Record<string, string> = {
+    H1: 'heading1',
+    H2: 'heading2',
+    H3: 'heading3',
+    P: 'paragraph',
+    BLOCKQUOTE: 'blockquote',
+    PRE: 'code',
+    UL: 'list',
+    OL: 'list',
+    HR: 'hr',
+  };
+
+  let blockIndex = 0;
+  Array.from(root.children).forEach((element) => {
+    const currentBlock = blocks[blockIndex];
+    const expectedBlockType = tagToBlockType[element.tagName];
+
+    if (!currentBlock || !expectedBlockType || currentBlock.blockType !== expectedBlockType) {
+      return;
+    }
+
+    (element as HTMLElement).dataset.blockId = currentBlock.blockId;
+    blockIndex += 1;
+  });
+
+  return root.innerHTML;
+};
+
 /**
  * Markdown 转 DOCX
  */
 export async function markdownToDocx(
   markdown: string,
-  template: string = 'corporate'
+  configInput: ExportConfigInput = DEFAULT_BASE_TEMPLATE,
+  scopedPatches: ScopedFormatPatch[] = []
 ): Promise<Blob> {
-  const config = TEMPLATES[template] || TEMPLATES.corporate;
+  const baseConfig = normalizeExportConfig(configInput);
+  const config = toLegacyTemplateConfig(baseConfig);
+  const blocks = parseMarkdownBlocks(markdown);
+  const appliedSelections = resolveAppliedSelectionPatches(markdown, blocks, scopedPatches);
+  const selectionMarkedMarkdown = injectSelectionMarkers(markdown, appliedSelections);
 
   // 提取文献引用
   const references: Array<{id: string; text: string}> = [];
   const refPattern = /^\[\^(\w+)\]:\s*(.+)$/gm;
   let refMatch;
-  while ((refMatch = refPattern.exec(markdown)) !== null) {
+  while ((refMatch = refPattern.exec(selectionMarkedMarkdown)) !== null) {
     references.push({ id: refMatch[1], text: refMatch[2] });
   }
 
   // 移除文献定义行
-  let processedMarkdown = markdown.replace(/^\[\^(\w+)\]:\s*.+$/gm, '');
+  let processedMarkdown = selectionMarkedMarkdown.replace(/^\[\^(\w+)\]:\s*.+$/gm, '');
 
-  // 提取标题用于生成目录
-  const headings: Array<{level: number; text: string}> = [];
   const lines = processedMarkdown.split('\n');
-  lines.forEach((line) => {
-    if (line.startsWith('# ')) {
-      headings.push({ level: 1, text: line.substring(2) });
-    } else if (line.startsWith('## ')) {
-      headings.push({ level: 2, text: line.substring(3) });
-    } else if (line.startsWith('### ')) {
-      headings.push({ level: 3, text: line.substring(4) });
-    }
-  });
 
   // 解析 Markdown
   const paragraphs: Paragraph[] = [];
 
-  // 添加 Word 风格的目录
-  if (headings.length > 0) {
-    // 目录标题 - 使用 Word 默认目录标题样式
-    paragraphs.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: '目录',
-            bold: true,
-            size: 28, // 14pt
-            color: '000000',
-            font: config.styles.body.font,
-          }),
-        ],
-        spacing: { before: 0, after: 200 },
-        alignment: AlignmentType.LEFT,
-      })
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const currentBlock = findBlockByLine(markdown, i);
+    const currentResolvedConfig = resolveScopedFormatConfig(
+      baseConfig,
+      scopedPatches,
+      currentBlock?.blockId
     );
-    
-    // 添加目录项 - 模仿 Word 自动生成的目录格式
-    headings.forEach((h, index) => {
-      const indent = (h.level - 1) * 360; // 每级缩进 0.25 英寸
-      const pageNumber = index + 1; // 简化的页码
-      
-      // 创建目录项：标题文本 + 点线 + 页码
+    const lineConfig = toLegacyTemplateConfig(currentResolvedConfig);
+    const selectionStyleMap = buildDocxSelectionStyleMap(currentBlock, currentResolvedConfig, appliedSelections);
+
+    if (line.trim() === SUPERDOC_PREVIEW_PAGE_BREAK) {
+      paragraphs.push(
+        new Paragraph({
+          text: '',
+          pageBreakBefore: true,
+        })
+      );
+      continue;
+    }
+
+    const previewTocTitle = parseSuperDocPreviewTocTitle(line);
+    if (previewTocTitle) {
       paragraphs.push(
         new Paragraph({
           children: [
             new TextRun({
-              text: h.text,
-              size: h.level === 1 ? 22 : 20, // H1 稍大
+              text: previewTocTitle,
+              bold: true,
+              size: 28,
               color: '000000',
-              font: config.styles.body.font,
-            }),
-            new TextRun({
-              text: '\t',
-              size: 20,
-            }),
-            new TextRun({
-              text: pageNumber.toString(),
-              size: 20,
-              color: '000000',
-              font: config.styles.body.font,
+              font: lineConfig.styles.h1.font ?? lineConfig.styles.body.font,
             }),
           ],
-          indent: { left: indent },
-          spacing: { before: 50, after: 50 },
-          alignment: AlignmentType.LEFT,
-          // 添加制表位：点线前导符
-          tabStops: [
-            {
-              type: 'right' as any,
-              position: 9000, // 右对齐位置
-              leader: 'dot' as any, // 点线前导符
-            },
-          ],
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 160, after: 240 },
         })
       );
-    });
-    
-    // 目录后添加分页符
-    paragraphs.push(new Paragraph({ text: '', pageBreakBefore: true }));
-  }
+      continue;
+    }
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const previewTocItem = parseSuperDocPreviewTocItem(line);
+    if (previewTocItem) {
+      const indentTwips = previewTocItem.level * 420;
+      const tocFontSize = previewTocItem.level === 0 ? 24 : previewTocItem.level === 1 ? 22 : 20;
+      paragraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: previewTocItem.label,
+              size: tocFontSize,
+              color: '000000',
+              font: lineConfig.styles.body.font,
+            }),
+            new Tab(),
+            new TextRun({
+              text: previewTocItem.pageNumber,
+              size: tocFontSize,
+              color: '000000',
+              font: lineConfig.styles.body.font,
+            }),
+          ],
+          indent: {
+            left: indentTwips,
+          },
+          tabStops: [
+            {
+              type: TabStopType.RIGHT,
+              position: TabStopPosition.MAX,
+              leader: LeaderType.DOT,
+            },
+          ],
+          spacing: { before: 0, after: 80 },
+        })
+      );
+      continue;
+    }
 
     if (line.startsWith('# ')) {
       // H1 标题 - 不使用预定义样式，直接设置颜色
       paragraphs.push(
         new Paragraph({
           children: [
-            new TextRun({
-              text: line.substring(2),
-              bold: config.styles.h1.bold,
-              size: config.styles.h1.fontSize,
-              color: config.styles.h1.color,
-              font: config.styles.h1.font,
+            new Bookmark({
+              id: getHeadingBookmarkId(currentBlock?.blockId ?? `heading1-${i}`),
+              children: parseInlineFormatting(line.substring(2), lineConfig, {
+                defaultStyle: {
+                  font: lineConfig.styles.h1.font ?? lineConfig.styles.body.font ?? 'Microsoft YaHei',
+                  size: lineConfig.styles.h1.fontSize,
+                  color: lineConfig.styles.h1.color,
+                  bold: lineConfig.styles.h1.bold,
+                },
+                selectionStyles: selectionStyleMap,
+              }),
             }),
           ],
           heading: HeadingLevel.HEADING_1,
-          alignment: config.styles.h1.alignment === 'center' ? AlignmentType.CENTER : AlignmentType.LEFT,
+          alignment: lineConfig.styles.h1.alignment === 'center' ? AlignmentType.CENTER : AlignmentType.LEFT,
           spacing: { before: 400, after: 200 },
         })
       );
@@ -199,12 +532,17 @@ export async function markdownToDocx(
       paragraphs.push(
         new Paragraph({
           children: [
-            new TextRun({
-              text: line.substring(3),
-              bold: config.styles.h2.bold,
-              size: config.styles.h2.fontSize,
-              color: config.styles.h2.color,
-              font: config.styles.h2.font,
+            new Bookmark({
+              id: getHeadingBookmarkId(currentBlock?.blockId ?? `heading2-${i}`),
+              children: parseInlineFormatting(line.substring(3), lineConfig, {
+                defaultStyle: {
+                  font: lineConfig.styles.h2.font ?? lineConfig.styles.body.font ?? 'Microsoft YaHei',
+                  size: lineConfig.styles.h2.fontSize,
+                  color: lineConfig.styles.h2.color,
+                  bold: lineConfig.styles.h2.bold,
+                },
+                selectionStyles: selectionStyleMap,
+              }),
             }),
           ],
           heading: HeadingLevel.HEADING_2,
@@ -216,12 +554,17 @@ export async function markdownToDocx(
       paragraphs.push(
         new Paragraph({
           children: [
-            new TextRun({
-              text: line.substring(4),
-              bold: config.styles.h3.bold,
-              size: config.styles.h3.fontSize,
-              color: config.styles.h3.color,
-              font: config.styles.h3.font,
+            new Bookmark({
+              id: getHeadingBookmarkId(currentBlock?.blockId ?? `heading3-${i}`),
+              children: parseInlineFormatting(line.substring(4), lineConfig, {
+                defaultStyle: {
+                  font: lineConfig.styles.h3.font ?? lineConfig.styles.body.font ?? 'Microsoft YaHei',
+                  size: lineConfig.styles.h3.fontSize,
+                  color: lineConfig.styles.h3.color,
+                  bold: lineConfig.styles.h3.bold,
+                },
+                selectionStyles: selectionStyleMap,
+              }),
             }),
           ],
           heading: HeadingLevel.HEADING_3,
@@ -230,7 +573,9 @@ export async function markdownToDocx(
       );
     } else if (line.startsWith('- ') || line.startsWith('* ')) {
       // 列表项
-      const children = parseInlineFormatting(line.substring(2), config);
+      const children = parseInlineFormatting(line.substring(2), lineConfig, {
+        selectionStyles: selectionStyleMap,
+      });
       paragraphs.push(
         new Paragraph({
           children,
@@ -242,14 +587,15 @@ export async function markdownToDocx(
       // 引用
       paragraphs.push(
         new Paragraph({
-          children: [
-            new TextRun({
-              text: line.substring(2),
-              italics: true,
+          children: parseInlineFormatting(line.substring(2), lineConfig, {
+            defaultStyle: {
+              font: lineConfig.styles.body.font ?? 'Microsoft YaHei',
+              size: lineConfig.styles.body.fontSize,
               color: '666666',
-              size: config.styles.body.fontSize,
-            }),
-          ],
+              italics: true,
+            },
+            selectionStyles: selectionStyleMap,
+          }),
           indent: { left: 720 },
           spacing: { before: 100, after: 100 },
         })
@@ -267,13 +613,13 @@ export async function markdownToDocx(
           children: [
             new TextRun({
               text: codeLines.join('\n'),
-              font: 'Consolas',
-              size: config.styles.code.fontSize,
+              font: lineConfig.styles.code.font,
+              size: lineConfig.styles.code.fontSize,
               color: '000000',
             }),
           ],
           shading: {
-            fill: config.styles.code.background || 'F5F5F5',
+            fill: lineConfig.styles.code.background || 'F5F5F5',
           },
           spacing: { before: 200, after: 200 },
         })
@@ -297,7 +643,7 @@ export async function markdownToDocx(
             new TextRun({
               text: unicodeFormula,
               font: 'Cambria Math',
-              size: config.styles.body.fontSize + 4,
+              size: lineConfig.styles.body.fontSize + 4,
               color: '000000',  // 黑色
               italics: true,
             }),
@@ -308,7 +654,9 @@ export async function markdownToDocx(
       );
     } else if (line.trim()) {
       // 普通段落 - 处理行内格式和数学公式
-      const children = parseInlineFormatting(line, config);
+      const children = parseInlineFormatting(line, lineConfig, {
+        selectionStyles: selectionStyleMap,
+      });
       paragraphs.push(
         new Paragraph({
           children,
@@ -466,18 +814,102 @@ function convertLatexToUnicode(latex: string): string {
 /**
  * 解析行内格式（粗体、斜体、代码、数学公式等）
  */
-function parseInlineFormatting(text: string, config: TemplateConfig): Array<TextRun | InternalHyperlink> {
+function parseInlineFormatting(
+  text: string,
+  config: TemplateConfig,
+  options: {
+    defaultStyle?: InlineRunStyle;
+    selectionStyles?: Map<string, InlineRunStyle>;
+  } = {}
+): Array<TextRun | InternalHyperlink> {
   const runs: Array<TextRun | InternalHyperlink> = [];
+  const defaultStyle: InlineRunStyle = options.defaultStyle ?? {
+    font: config.styles.body.font ?? 'Microsoft YaHei',
+    size: config.styles.body.fontSize,
+    color: config.styles.body.color,
+  };
+  const selectionStyles = options.selectionStyles ?? new Map<string, InlineRunStyle>();
   let currentText = '';
   let i = 0;
+  let activeSelectionStyle: InlineRunStyle | undefined;
+
+  const createRun = (
+    textContent: string,
+    overrides: Partial<InlineRunStyle> = {}
+  ): TextRun => {
+    const mergedStyle: InlineRunStyle = {
+      ...defaultStyle,
+      ...(activeSelectionStyle ?? {}),
+      ...overrides,
+      bold:
+        overrides.bold ??
+        activeSelectionStyle?.bold ??
+        defaultStyle.bold,
+      italics:
+        overrides.italics ??
+        activeSelectionStyle?.italics ??
+        defaultStyle.italics,
+    };
+
+    return new TextRun({
+      text: textContent,
+      font: mergedStyle.font,
+      size: mergedStyle.size,
+      color: mergedStyle.color,
+      bold: mergedStyle.bold,
+      italics: mergedStyle.italics,
+      shading: mergedStyle.background ? { fill: mergedStyle.background } : undefined,
+    });
+  };
+
+  const flushCurrentText = () => {
+    if (!currentText) {
+      return;
+    }
+
+    runs.push(createRun(currentText));
+    currentText = '';
+  };
+
+  const readSelectionMarker = (
+    source: string,
+    offset: number,
+    markerType: 'start' | 'end'
+  ): { selectionId: string; marker: string } | null => {
+    for (const selectionId of selectionStyles.keys()) {
+      const marker =
+        markerType === 'start'
+          ? getSelectionStartMarker(selectionId)
+          : getSelectionEndMarker(selectionId);
+
+      if (source.startsWith(marker, offset)) {
+        return { selectionId, marker };
+      }
+    }
+
+    return null;
+  };
 
   while (i < text.length) {
+    const startMarker = readSelectionMarker(text, i, 'start');
+    if (startMarker) {
+      flushCurrentText();
+      activeSelectionStyle = selectionStyles.get(startMarker.selectionId);
+      i += startMarker.marker.length;
+      continue;
+    }
+
+    const endMarker = readSelectionMarker(text, i, 'end');
+    if (endMarker) {
+      flushCurrentText();
+      activeSelectionStyle = undefined;
+      i += endMarker.marker.length;
+      continue;
+    }
+
     // 行内数学公式 $formula$
     if (text[i] === '$' && text[i + 1] !== '$') {
-      if (currentText) {
-        runs.push(new TextRun({ text: currentText, size: config.styles.body.fontSize, color: '000000' }));
-        currentText = '';
-      }
+      flushCurrentText();
       i++; // skip $
       let formulaText = '';
       while (i < text.length && text[i] !== '$') {
@@ -490,51 +922,41 @@ function parseInlineFormatting(text: string, config: TemplateConfig): Array<Text
       const unicodeFormula = convertLatexToUnicode(formulaText);
       
       runs.push(
-        new TextRun({
-          text: unicodeFormula,
+        createRun(unicodeFormula, {
           font: 'Cambria Math',
-          size: config.styles.body.fontSize,
-          color: '000000',  // 黑色
+          size: defaultStyle.size,
+          color: '000000',
           italics: true,
         })
       );
     }
     // 粗体 **text**
     else if (text.substring(i, i + 2) === '**') {
-      if (currentText) {
-        runs.push(new TextRun({ text: currentText, size: config.styles.body.fontSize, color: '000000' }));
-        currentText = '';
-      }
+      flushCurrentText();
       i += 2;
       let boldText = '';
       while (i < text.length && text.substring(i, i + 2) !== '**') {
         boldText += text[i];
         i++;
       }
-      runs.push(new TextRun({ text: boldText, bold: true, size: config.styles.body.fontSize, color: '000000' }));
+      runs.push(createRun(boldText, { bold: true }));
       i += 2;
     }
     // 斜体 *text*
     else if (text[i] === '*' && text[i + 1] !== '*') {
-      if (currentText) {
-        runs.push(new TextRun({ text: currentText, size: config.styles.body.fontSize, color: '000000' }));
-        currentText = '';
-      }
+      flushCurrentText();
       i++;
       let italicText = '';
       while (i < text.length && text[i] !== '*') {
         italicText += text[i];
         i++;
       }
-      runs.push(new TextRun({ text: italicText, italics: true, size: config.styles.body.fontSize, color: '000000' }));
+      runs.push(createRun(italicText, { italics: true }));
       i++;
     }
     // 行内代码 `code`
     else if (text[i] === '`') {
-      if (currentText) {
-        runs.push(new TextRun({ text: currentText, size: config.styles.body.fontSize, color: '000000' }));
-        currentText = '';
-      }
+      flushCurrentText();
       i++;
       let codeText = '';
       while (i < text.length && text[i] !== '`') {
@@ -542,22 +964,18 @@ function parseInlineFormatting(text: string, config: TemplateConfig): Array<Text
         i++;
       }
       runs.push(
-        new TextRun({
-          text: codeText,
-          font: 'Consolas',
+        createRun(codeText, {
+          font: config.styles.code.font,
           size: config.styles.code.fontSize,
           color: '000000',
-          shading: { fill: config.styles.code.background || 'F5F5F5' },
+          background: config.styles.code.background || 'F5F5F5',
         })
       );
       i++;
     }
     // 文献引用标记 [^1] - 添加内部超链接
     else if (text.substring(i, i + 2) === '[^') {
-      if (currentText) {
-        runs.push(new TextRun({ text: currentText, size: config.styles.body.fontSize, color: '000000' }));
-        currentText = '';
-      }
+      flushCurrentText();
       i += 2; // skip [^
       let refId = '';
       while (i < text.length && text[i] !== ']') {
@@ -575,7 +993,7 @@ function parseInlineFormatting(text: string, config: TemplateConfig): Array<Text
               text: `[${refId}]`,
               superScript: true,
               color: '2563eb',
-              size: config.styles.body.fontSize - 4,
+              size: defaultStyle.size - 4,
               style: 'Hyperlink',
             }),
           ],
@@ -584,10 +1002,7 @@ function parseInlineFormatting(text: string, config: TemplateConfig): Array<Text
     }
     // 链接 [text](url) - 简化处理
     else if (text[i] === '[') {
-      if (currentText) {
-        runs.push(new TextRun({ text: currentText, size: config.styles.body.fontSize, color: '000000' }));
-        currentText = '';
-      }
+      flushCurrentText();
       i++;
       let linkText = '';
       while (i < text.length && text[i] !== ']') {
@@ -608,7 +1023,14 @@ function parseInlineFormatting(text: string, config: TemplateConfig): Array<Text
             text: linkText,
             color: '0000FF',
             underline: { type: UnderlineType.SINGLE },
-            size: config.styles.body.fontSize,
+            size: defaultStyle.size,
+            font: defaultStyle.font,
+            bold: activeSelectionStyle?.bold ?? defaultStyle.bold,
+            italics: activeSelectionStyle?.italics ?? defaultStyle.italics,
+            shading:
+              activeSelectionStyle?.background != null
+                ? { fill: activeSelectionStyle.background }
+                : undefined,
           })
         );
       }
@@ -618,21 +1040,31 @@ function parseInlineFormatting(text: string, config: TemplateConfig): Array<Text
     }
   }
 
-  if (currentText) {
-    runs.push(new TextRun({ text: currentText, size: config.styles.body.fontSize, color: '000000' }));
-  }
+  flushCurrentText();
 
-  return runs.length > 0 ? runs : [new TextRun({ text: text, size: config.styles.body.fontSize, color: '000000' })];
+  return runs.length > 0 ? runs : [createRun(text)];
 }
 
 /**
  * Markdown 转 HTML
  */
-export function markdownToHtml(markdown: string, template: string = 'corporate'): string {
-  const config = TEMPLATES[template] || TEMPLATES.corporate;
+export function markdownToHtml(
+  markdown: string,
+  configInput: ExportConfigInput = DEFAULT_BASE_TEMPLATE,
+  scopedPatches: ScopedFormatPatch[] = []
+): string {
+  const baseConfig = normalizeExportConfig(configInput);
+  const blocks = parseMarkdownBlocks(markdown);
+  const appliedSelections = resolveAppliedSelectionPatches(markdown, blocks, scopedPatches);
+  const selectionMarkedMarkdown = injectSelectionMarkers(markdown, appliedSelections);
 
   // 渲染 Markdown
-  const htmlContent = md.render(markdown);
+  const annotatedHtml = replaceSelectionMarkersWithHtml(
+    annotateHtmlWithBlocks(md.render(selectionMarkedMarkdown), markdown),
+    appliedSelections
+  );
+  const scopedBlockCss = buildScopedBlockCss(blocks, baseConfig, scopedPatches);
+  const selectionCss = buildSelectionCss(baseConfig, scopedPatches, appliedSelections);
 
   // 添加样式
   const css = `
@@ -640,54 +1072,69 @@ export function markdownToHtml(markdown: string, template: string = 'corporate')
       @import url('https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css');
       
       body {
-        font-family: '${config.styles.body.font}', 'Microsoft YaHei', Arial, sans-serif;
-        font-size: ${config.styles.body.fontSize / 2}pt;
-        line-height: ${(config.styles.body.lineSpacing || 240) / 240};
-        color: #${config.styles.body.color};
+        font-family: '${baseConfig.body.fontFamily}';
+        font-size: ${baseConfig.body.fontSizePt}pt;
+        line-height: ${baseConfig.body.lineSpacing};
+        color: ${baseConfig.body.color};
         max-width: 800px;
         margin: 40px auto;
         padding: 20px;
       }
       
       h1 {
-        font-size: ${config.styles.h1.fontSize / 2}pt;
-        font-weight: ${config.styles.h1.bold ? 'bold' : 'normal'};
-        color: #${config.styles.h1.color};
-        text-align: ${config.styles.h1.alignment || 'left'};
+        font-family: '${baseConfig.h1.fontFamily}';
+        font-size: ${baseConfig.h1.fontSizePt}pt;
+        font-weight: ${baseConfig.h1.bold ? 'bold' : 'normal'};
+        font-style: ${baseConfig.h1.italic ? 'italic' : 'normal'};
+        color: ${baseConfig.h1.color};
+        text-align: ${baseConfig.h1.align || 'left'};
+        line-height: ${baseConfig.h1.lineSpacing};
         margin: 24px 0 16px 0;
         padding-bottom: 8px;
         border-bottom: 2px solid #333;
       }
       
       h2 {
-        font-size: ${config.styles.h2.fontSize / 2}pt;
-        font-weight: ${config.styles.h2.bold ? 'bold' : 'normal'};
-        color: #${config.styles.h2.color};
+        font-family: '${baseConfig.h2.fontFamily}';
+        font-size: ${baseConfig.h2.fontSizePt}pt;
+        font-weight: ${baseConfig.h2.bold ? 'bold' : 'normal'};
+        font-style: ${baseConfig.h2.italic ? 'italic' : 'normal'};
+        color: ${baseConfig.h2.color};
+        text-align: ${baseConfig.h2.align};
+        line-height: ${baseConfig.h2.lineSpacing};
         margin: 20px 0 12px 0;
       }
       
       h3 {
-        font-size: ${config.styles.h3.fontSize / 2}pt;
-        font-weight: ${config.styles.h3.bold ? 'bold' : 'normal'};
-        color: #${config.styles.h3.color};
+        font-family: '${baseConfig.h3.fontFamily}';
+        font-size: ${baseConfig.h3.fontSizePt}pt;
+        font-weight: ${baseConfig.h3.bold ? 'bold' : 'normal'};
+        font-style: ${baseConfig.h3.italic ? 'italic' : 'normal'};
+        color: ${baseConfig.h3.color};
+        text-align: ${baseConfig.h3.align};
+        line-height: ${baseConfig.h3.lineSpacing};
         margin: 16px 0 10px 0;
       }
       
       p {
         margin: 12px 0;
-        text-align: justify;
+        font-family: '${baseConfig.body.fontFamily}';
+        font-size: ${baseConfig.body.fontSizePt}pt;
+        color: ${baseConfig.body.color};
+        text-align: ${baseConfig.body.align};
+        line-height: ${baseConfig.body.lineSpacing};
       }
       
       code {
-        font-family: 'Consolas', 'Courier New', monospace;
-        font-size: ${config.styles.code.fontSize / 2}pt;
-        background-color: #${config.styles.code.background || 'F5F5F5'};
+        font-family: '${baseConfig.code.fontFamily}';
+        font-size: ${baseConfig.code.fontSizePt}pt;
+        background-color: ${baseConfig.code.backgroundColor};
         padding: 2px 6px;
         border-radius: 4px;
       }
       
       pre {
-        background-color: #${config.styles.code.background || 'F5F5F5'};
+        background-color: ${baseConfig.code.backgroundColor};
         padding: 16px;
         border-radius: 8px;
         overflow-x: auto;
@@ -747,6 +1194,9 @@ export function markdownToHtml(markdown: string, template: string = 'corporate')
         height: auto;
         margin: 16px 0;
       }
+
+      ${scopedBlockCss}
+      ${selectionCss}
     </style>
   `;
 
@@ -760,7 +1210,7 @@ export function markdownToHtml(markdown: string, template: string = 'corporate')
       ${css}
     </head>
     <body>
-      ${htmlContent}
+      ${annotatedHtml}
     </body>
     </html>
   `;
@@ -771,9 +1221,11 @@ export function markdownToHtml(markdown: string, template: string = 'corporate')
  */
 export async function markdownToPdf(
   markdown: string,
-  template: string = 'corporate'
+  configInput: ExportConfigInput = DEFAULT_BASE_TEMPLATE,
+  scopedPatches: ScopedFormatPatch[] = []
 ): Promise<Blob> {
-  const config = TEMPLATES[template] || TEMPLATES.corporate;
+  const baseConfig = normalizeExportConfig(configInput);
+  const config = toLegacyTemplateConfig(baseConfig);
 
   // 创建 PDF
   const doc = new jsPDF({
@@ -796,7 +1248,16 @@ export async function markdownToPdf(
   let inBlockFormula = false;
   let formulaLines: string[] = [];
 
-  for (const line of lines) {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex];
+    const currentBlock = findBlockByLine(markdown, lineIndex);
+    const currentResolvedConfig = resolveScopedFormatConfig(
+      baseConfig,
+      scopedPatches,
+      currentBlock?.blockId
+    );
+    const lineConfig = toLegacyTemplateConfig(currentResolvedConfig);
+
     // 检查是否需要新页面
     if (yPosition > pageHeight - 60) {
       doc.addPage();
@@ -817,12 +1278,12 @@ export async function markdownToPdf(
         const formulaText = formulaLines.join(' ');
         const unicodeFormula = convertLatexToUnicode(formulaText);
         
-        doc.setFontSize(config.styles.body.fontSize / 2 + 2);
+        doc.setFontSize(lineConfig.styles.body.fontSize / 2 + 2);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(0, 0, 0); // 黑色
         const textLines = doc.splitTextToSize(unicodeFormula, maxWidth);
         doc.text(textLines, pageWidth / 2, yPosition, { align: 'center' });
-        yPosition += (config.styles.body.fontSize / 2 + 2) * textLines.length + 16;
+        yPosition += (lineConfig.styles.body.fontSize / 2 + 2) * textLines.length + 16;
         continue;
       }
     }
@@ -834,37 +1295,37 @@ export async function markdownToPdf(
 
     if (line.startsWith('# ')) {
       // H1 标题
-      doc.setFontSize(config.styles.h1.fontSize / 2);
-      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(lineConfig.styles.h1.fontSize / 2);
+      doc.setFont('helvetica', lineConfig.styles.h1.bold ? 'bold' : 'normal');
       doc.setTextColor(0, 0, 0); // 黑色
       const text = line.substring(2);
       const textLines = doc.splitTextToSize(text, maxWidth);
-      doc.text(textLines, config.styles.h1.alignment === 'center' ? pageWidth / 2 : margin, yPosition, {
-        align: config.styles.h1.alignment === 'center' ? 'center' : 'left',
+      doc.text(textLines, lineConfig.styles.h1.alignment === 'center' ? pageWidth / 2 : margin, yPosition, {
+        align: lineConfig.styles.h1.alignment === 'center' ? 'center' : 'left',
       });
-      yPosition += (config.styles.h1.fontSize / 2) * textLines.length + 20;
+      yPosition += (lineConfig.styles.h1.fontSize / 2) * textLines.length + 20;
     } else if (line.startsWith('## ')) {
       // H2 标题
-      doc.setFontSize(config.styles.h2.fontSize / 2);
-      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(lineConfig.styles.h2.fontSize / 2);
+      doc.setFont('helvetica', lineConfig.styles.h2.bold ? 'bold' : 'normal');
       doc.setTextColor(0, 0, 0); // 黑色
       const text = line.substring(3);
       const textLines = doc.splitTextToSize(text, maxWidth);
       doc.text(textLines, margin, yPosition);
-      yPosition += (config.styles.h2.fontSize / 2) * textLines.length + 16;
+      yPosition += (lineConfig.styles.h2.fontSize / 2) * textLines.length + 16;
     } else if (line.startsWith('### ')) {
       // H3 标题
-      doc.setFontSize(config.styles.h3.fontSize / 2);
-      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(lineConfig.styles.h3.fontSize / 2);
+      doc.setFont('helvetica', lineConfig.styles.h3.bold ? 'bold' : 'normal');
       doc.setTextColor(0, 0, 0); // 黑色
       const text = line.substring(4);
       const textLines = doc.splitTextToSize(text, maxWidth);
       doc.text(textLines, margin, yPosition);
-      yPosition += (config.styles.h3.fontSize / 2) * textLines.length + 14;
+      yPosition += (lineConfig.styles.h3.fontSize / 2) * textLines.length + 14;
     } else if (line.trim()) {
       // 普通文本
-      doc.setFontSize(config.styles.body.fontSize / 2);
-      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(lineConfig.styles.body.fontSize / 2);
+      doc.setFont('helvetica', lineConfig.styles.body.font === 'Consolas' ? 'courier' : 'normal');
       doc.setTextColor(0, 0, 0); // 黑色
       
       // 处理行内数学公式
@@ -882,7 +1343,7 @@ export async function markdownToPdf(
       
       const textLines = doc.splitTextToSize(cleanText, maxWidth);
       doc.text(textLines, margin, yPosition);
-      yPosition += (config.styles.body.fontSize / 2) * textLines.length + 12;
+      yPosition += (lineConfig.styles.body.fontSize / 2) * textLines.length + 12;
     } else {
       // 空行
       yPosition += 10;

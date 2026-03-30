@@ -647,6 +647,7 @@ describe('Integration Test: Remember Me Functionality', () => {
     });
 
     it('should clear rememberMe even when logout API fails', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       localStorage.setItem('rememberMe', 'true');
       
       vi.mocked(apiClient.auth.logout).mockRejectedValue(
@@ -662,6 +663,7 @@ describe('Integration Test: Remember Me Functionality', () => {
       });
 
       expect(localStorage.getItem('rememberMe')).toBeNull();
+      expect(consoleErrorSpy).toHaveBeenCalled();
     });
   });
 
